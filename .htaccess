@@ -1,0 +1,42 @@
+RewriteEngine On
+IndexIgnore *
+Options -Indexes
+
+
+ErrorDocument  404  /404/
+RewriteRule ^404/$ /index.php?uno=errorpage
+
+RewriteRule .*\.(ini)$ http://localhost/ [R,NC,L]
+
+RewriteRule ^cfw$ http://localhost/ [R,NC,L]
+RewriteRule ^uploads/* http://localhost/ [R,NC,L]
+
+<Files .htaccess>
+order allow,deny
+deny from all
+</Files>
+
+
+RewriteRule ^admin/(.*)/(.*)/(.*)/(.*)/ /index.php?uno=$1&dos=$2&tres=$3&cuatro=$4
+RewriteRule ^admin/(.*)/(.*)/(.*)/(.*) /index.php?uno=$1&dos=$2&tres=$3&cuatro=$4
+RewriteRule ^admin/(.*)/(.*)/(.*)/ /index.php?uno=$1&dos=$2&tres=$3
+RewriteRule ^admin/(.*)/(.*)/(.*) /index.php?uno=$1&dos=$2&tres=$3
+RewriteRule ^admin/(.*)/(.*)/ /index.php?uno=$1&dos=$2
+RewriteRule ^admin/(.*)/(.*) /index.php?uno=$1&dos=$2
+RewriteRule ^admin/(.*)/ /index.php?uno=$1
+RewriteRule ^admin/(.*) /index.php?uno=$1
+RewriteRule ^admin /index.php
+
+
+RewriteRule ^login/logout/ /index.php?uno=login&dos=logout
+RewriteRule ^login/logout /index.php?uno=login&dos=logout
+RewriteRule ^login/register/ /index.php?uno=login&dos=register
+RewriteRule ^login/register /index.php?uno=login&dos=register
+RewriteRule ^login/restorepassword/ /index.php?uno=login&dos=restorepassword
+RewriteRule ^login/restorepassword /index.php?uno=login&dos=restorepassword
+RewriteRule ^login/ /index.php?uno=login
+RewriteRule ^login /index.php?uno=login
+
+
+
+

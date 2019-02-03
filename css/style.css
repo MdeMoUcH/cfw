@@ -1,0 +1,49 @@
+/*** CFW ***/
+
+.clear{
+	clear:both;
+
+}
+
+#menu {
+	width:100%;
+}
+#content_m {
+	width:100%;
+	padding:10px;
+	margin-bottom:10px;
+}
+
+#menu > ul > li {
+	list-style-type:circle;
+	margin-right:25px;
+	float:left;
+}
+
+.active a{
+	font-weight:bold;
+	font-style:strong;
+}
+
+.btn{
+	/*font-size: 13px;
+	padding: 4px 12px;*/
+	font-size: 12px;
+	padding: 4px 18px;
+}
+
+#cabecera{
+	width:100%;
+	max-width:420px;
+	margin-bottom:10px;
+}
+
+a, a:hover{
+	color:#00715b;
+}
+
+h1{
+	font-size: 24px;
+}
+
+
