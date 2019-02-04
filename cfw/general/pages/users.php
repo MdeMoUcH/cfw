@@ -92,7 +92,7 @@ class users extends Page{
 		
 		if($save != "" && $_POST["pass"] == $_POST["pass_confirm"]){
 			if($_POST["pass"] != ""){
-				$_POST["pass"] = sha1($_POST["pass"]);
+				$_POST["pass"] = md5($_POST["pass"]);
 			}
 			
 			if($_POST["email"] == "" || $_POST["pass"] == ""){

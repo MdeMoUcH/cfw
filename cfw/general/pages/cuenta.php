@@ -41,7 +41,7 @@ class cuenta extends Page{
 									"email" => $_POST["email"],
 									"nick" => $_POST["nick"]);
 					if($_POST["pass1"] != ""){
-						$a_data["pass"] = sha1($_POST["pass1"]);
+						$a_data["pass"] = md5($_POST["pass1"]);
 					}
 					if($ormuser->update($a_data)){
 						$tplaux->vars["color"] = "Green";
