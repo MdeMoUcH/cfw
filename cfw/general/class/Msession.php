@@ -82,7 +82,7 @@ class Msession extends AppConf
         }//else
         
         if($lang == ""){
-			$this->data["lang"] = $this->config["default_lang"];
+			$this->data["lang"] = $this->config["lang_default"];
 		}
 
         $this->actualiza();
