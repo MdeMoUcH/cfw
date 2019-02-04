@@ -8,7 +8,7 @@
  ***************/
 
 
-class users extends Page{	
+class users extends Page{
 	
 	protected $class = "Usuarios";
 	protected $titulo = "Usuarios";
@@ -182,7 +182,7 @@ class users extends Page{
 			$orm = new $this->class();
 			$tplmsg = new Template("html/p_color");
 			if($_POST["pass"] != "" && $_POST["pass"] == $_POST["pass_confirm"]){
-				$_POST["pass"] = sha1($_POST["pass"]);
+				$_POST["pass"] = md5($_POST["pass"]);
 			}
 			if($orm->update($_POST)){
 				$tplmsg->vars["color"] = "Green";
