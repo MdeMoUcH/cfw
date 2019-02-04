@@ -95,7 +95,7 @@ class Template extends App{
 			$this->mihtml = preg_replace('#\{([a-z0-9\-_]*?)\}#is', "' . $\\1 . '", $this->mihtml);
 			if(isset($this->vars)){
 				reset($this->vars);
-				while(list($key, $val) = each($this->vars)){
+				foreach($this->vars as $key=>$val){
 					$$key = $val;
 				}//while
 			}//if
@@ -103,7 +103,7 @@ class Template extends App{
 			@eval("\$this->mihtml = '$this->mihtml';");
 			if(isset($this->vars)){
 				reset($this->vars);
-				while(list($key, $val) = each($this->vars)){
+				foreach($this->vars as $key=>$val){
 					unset($$key);
 				}//while
 			}//if
