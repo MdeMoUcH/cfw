@@ -12,6 +12,8 @@
 
 class Page extends App
 {
+	public $vars;
+	
 	function __construct()
 	{
 		parent::__construct();

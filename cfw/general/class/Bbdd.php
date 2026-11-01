@@ -12,12 +12,18 @@
 
 class Bbdd extends App
 {
+    public $resultado;
+    public $conexion;
+    
     function __construct()
     {
 		parent::__construct();
 		
         $this->resultado = array();
 
+        //Desde PHP 8.1 mysqli lanza excepciones por defecto; aquí se trabaja con los false.
+        mysqli_report(MYSQLI_REPORT_OFF);
+        
         $this->conexion = @mysqli_connect($this->config["db.host"],$this->config["db.user"],$this->config["db.pass"],$this->config["db.name"]);
         
         if($this->conexion)

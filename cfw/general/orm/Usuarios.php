@@ -110,7 +110,7 @@ class Usuarios extends Orm
 		parent::getById($id);
 		$a_data = array();
 		$a_data["ultimo_acceso"] = date("Y-m-d H:i:s");
-		$a_data["visitas"] = $this->resultado[0]['visitas']+1;
+		$a_data["visitas"] = @$this->resultado[0]['visitas']+1;
 		$a_data["timezone"] = $timezone;
 		
 		return parent::update($a_data,$id);

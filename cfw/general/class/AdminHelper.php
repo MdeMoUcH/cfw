@@ -17,6 +17,18 @@ class AdminHelper extends Page{
 	protected $s_error_subida = "";
 	//Unos 80 MB al decodificar: cabe en un memory_limit de 128M.
 	protected $img_max_pixeles = 16000000;
+	//Las define cada subclase.
+	protected $class;
+	protected $titulo;
+	protected $template;
+	protected $singular;
+	protected $paginacion;
+	protected $template_listado;
+	protected $template_single;
+	protected $slug_admin;
+	protected $categorias;
+	protected $categorias_orm;
+	protected $config_name;
 	
 	
 	function __construct(){
@@ -61,8 +73,9 @@ class AdminHelper extends Page{
 				$tplelement = new Template("element_listado_pro");
 				$tplelement->vars["urlbase"] = $this->config["urlbase"];
 				$tplelement->vars["slug"] = $this->slug;
-				$tplelement->vars["titulo"] = escapar($element["nombre"]);
-				$tplelement->vars["nombre"] = escapar($element["nombre"]);
+				$s_etiqueta = (@$element["nombre"] != "") ? $element["nombre"] : (string)@$element["name"];
+				$tplelement->vars["titulo"] = escapar($s_etiqueta);
+				$tplelement->vars["nombre"] = escapar($s_etiqueta);
 				$tplelement->vars["id"] = $element["id"];
 				$aux_id = $element["id"];
 				$aux_name = "elementos[]";
@@ -110,7 +123,7 @@ class AdminHelper extends Page{
 				$tplelement->vars[$campo] = $valor;
 			}
 			
-			$tpl->vars["titulo"] = $element["titulo"];
+			$tpl->vars["titulo"] = isset($element["titulo"]) ? $element["titulo"] : $this->titulo;
 			$tpl->vars["content"] = $tplelement->get();
 			
 			if($this->session->isUserAdmin()){
@@ -160,7 +173,7 @@ class AdminHelper extends Page{
 				
 				$s_msg = $tplmsg->get();
 				
-				if(@$this->categorias){
+				if(@$this->categorias && isset($_POST["categorias"])){
 					$this->guardarCategorias($id,$_POST["categorias"]);
 				}
 			}else{
@@ -198,26 +211,30 @@ class AdminHelper extends Page{
 		
 		$orm->cerrar();
 		
-		foreach($orm->campos_form as $campo){
-			if($campo["type"] == "select_dinamico" || $campo["type"] == "select_dinamico_desactivado"){
+		foreach((array)$orm->campos_form as $campo){
+			if(@$campo["type"] == "select_dinamico" || @$campo["type"] == "select_dinamico_desactivado"){
 					$orm_aux = new DinamicOrm();
 					$orm_aux->setTabla($campo["tabla"]);
 					$orm_aux->getAll();
 					$a_opciones = array();
 					foreach($orm_aux->resultado as $opcion){
-						$a_opciones[$opcion["id"]] = $opcion["name"];
+						if(@$opcion["name"] != ""){
+							$a_opciones[$opcion["id"]] = $opcion["name"];
+						}else{
+							$a_opciones[$opcion["id"]] = (string)@$opcion["nombre"];
+						}
 					}
 					//$orm->campos_form[$campo["name"]]["type"] = "select";
 					$orm->campos_form[$campo["name"]]["opciones"] = $a_opciones;
-			}elseif($campo["type"] == "checkbox_single"){
-				if(@$a_values[$campo["name"]] == $orm->campos_form[$campo["name"]]["value"]){
+			}elseif(@$campo["type"] == "checkbox_single"){
+				if(@$a_values[$campo["name"]] == @$orm->campos_form[$campo["name"]]["value"]){
 					$orm->campos_form[$campo["name"]]["checked"] = true;
 				}
 			}
 		}
 		
 		$a_campos = array();
-		$a_campos = $orm->campos_form;
+		$a_campos = (array)$orm->campos_form;
 		
 		if(@$this->categorias){
 			$a_cat_values = array();
@@ -277,7 +294,7 @@ class AdminHelper extends Page{
 			}
 			if($orm->update($_POST,$id)){
 				$tplmsg->vars["color"] = "Green";
-				$tplmsg->vars["text"] = ucfirst($this->singular)." actualizado con éxito.";
+				$tplmsg->vars["text"] = ucfirst((string)$this->singular)." actualizado con éxito.";
 					
 				$this->guardarSubidas($orm,$id,$tplmsg);
 				
@@ -371,7 +388,7 @@ class AdminHelper extends Page{
 	private function load_template_single(){
 		if(file_exists($this->config["pathbase"]."cfw/general/templates/".$this->slug.".tpl") || 
 			file_exists($this->config["pathbase"]."cfw/specific/templates/".$this->slug.".tpl")){
-			$tpl = new Template($this->template_single);
+			$tpl = new Template(@$this->template_single != "" ? $this->template_single : $this->slug);
 		}else{
 			$tpl = new Template("element");
 		}	
@@ -408,6 +425,9 @@ class AdminHelper extends Page{
 				$orm->updateField($id,$name,$this->last_file_name);
 			}else{
 				$tplmsg->vars["color"] = "Red";
+				if(!isset($tplmsg->vars["text"])){
+					$tplmsg->vars["text"] = "";
+				}
 				$tplmsg->vars["text"] .= " Hubo algún problema al subir ".escapar($name).": ".$this->s_error_subida.".";
 			}
 		}//foreach
@@ -431,7 +451,8 @@ class AdminHelper extends Page{
 
 		//Primero el contenido: así el rechazo de un archivo que no es imagen no depende de GD.
 		$s_image = $image_data["tmp_name"];
-		$a_datos = @getimagesize($s_image);
+		//Con una ruta vacía, getimagesize lanza ValueError y @ no lo silencia.
+		$a_datos = (is_string($s_image) && $s_image != "") ? @getimagesize($s_image) : false;
 		
 		if($a_datos === false || !in_array($a_datos[2],array(1,2,3)) || $a_datos[0] < 1 || $a_datos[1] < 1)
 		{
@@ -474,7 +495,7 @@ class AdminHelper extends Page{
 		
 		$s_ruta = $this->rutaSubida(".img.path");
 		
-		if($anchura <= 0 || $hmax <= 0 || $s_ruta == "")
+		if(!is_numeric($anchura) || !is_numeric($hmax) || $anchura <= 0 || $hmax <= 0 || $s_ruta == "")
 		{
 			error_log("CFW: saveImage sin configuración de tamaño o ruta");
 			$this->s_error_subida = "falta la configuración";
@@ -569,9 +590,6 @@ class AdminHelper extends Page{
 			$b_ok = @imagepng($thumb,$s_ruta.$s_nombre);
 		}//if
 
-		imagedestroy($thumb);
-		imagedestroy($img);
-		
 		if(!$b_ok)
 		{
 			error_log("CFW: no se pudo escribir ".$s_ruta.$s_nombre);
@@ -611,6 +629,13 @@ class AdminHelper extends Page{
 		if(!in_array($s_ext,$this->extensiones_permitidas))
 		{
 			$this->s_error_subida = "tipo de archivo no permitido";
+			return false;
+		}//if
+		
+		//Con una ruta vacía, file_get_contents lanza ValueError y @ no lo silencia.
+		if(!is_string($file_data["tmp_name"]) || $file_data["tmp_name"] == "")
+		{
+			$this->s_error_subida = "no se recibió el archivo";
 			return false;
 		}//if
 		

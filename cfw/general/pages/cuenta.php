@@ -25,7 +25,7 @@ class cuenta extends Page{
 		$ormuser = new Usuarios();
 		
 		$ormuser->getById($this->session->data["id_usuario"]);
-		$s_email_actual = $ormuser->resultado[0]["email"];
+		$s_email_actual = (string)@$ormuser->resultado[0]["email"];
 		$tpl->vars["email"] = escapar($s_email_actual);
 		
 		

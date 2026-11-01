@@ -25,10 +25,11 @@ function muere($s_msg = "", $b_objeto = true, $b_die = true){
 
 
 function ordenarArrayPorClave($a_array,$key = ""){
+	$a_array = (array)$a_array;
 	if($key != ""){
 		$a_aux = array();
 		foreach($a_array as $element){
-			$a_aux[$element[$key]] = $element;
+			$a_aux[(string)@$element[$key]] = $element;
 		}
 		$a_array = $a_aux;
 	}
@@ -116,7 +117,7 @@ function intentos_archivo($s_email)
 	}//if
 	
 	//Normaliza como Orm::filtro. Las variantes del cotejamiento (ŭ, ſ) las resuelve login con el email guardado.
-	return $s_dir.md5(get_ip()."|".strtolower(trim(strip_tags(trim($s_email)))));
+	return $s_dir.md5(get_ip()."|".strtolower(trim(strip_tags(trim((string)$s_email)))));
 }//fun intentos_archivo
 
 
@@ -188,7 +189,7 @@ function intentos_limpiar($s_email)
 function filtro_utf($cadena)
 {
     //$cadena=utf8_encode($cadena);
-    $cadena = trim($cadena);
+    $cadena = trim((string)$cadena);
     $cadena = str_replace("&quot;","'",$cadena);
     $cadena = str_replace("&"," and ",$cadena);
 
@@ -198,12 +199,12 @@ function filtro_utf($cadena)
 
 function filtro_mysql_utf8($cadena)
 {
-	return htmlentities(strip_tags(utf8_decode(trim($cadena))), ENT_COMPAT, "ISO-8859-1");
+	return htmlentities(strip_tags(mb_convert_encoding(trim((string)$cadena), "ISO-8859-1", "UTF-8")), ENT_COMPAT, "ISO-8859-1");
 }//fun filtro_mysql
 
 function filtro_mysql($cadena)
 {
-	return str_replace("'","\'", htmlentities(strip_tags(trim($cadena)), ENT_COMPAT, "ISO-8859-1"));
+	return str_replace("'","\'", htmlentities(strip_tags(trim((string)$cadena)), ENT_COMPAT, "ISO-8859-1"));
 	
 }//fun filtro_mysql
 
@@ -211,7 +212,7 @@ function filtro_mysql($cadena)
 
 function quitar_barra($s_texto)
 {
-    $s_texto = str_replace("/","",$s_texto);
+    $s_texto = str_replace("/","",(string)$s_texto);
     return $s_texto;
 }//fun
 
@@ -227,15 +228,15 @@ function enviarMail($to, $subject, $message)
                 "Reply-To: ".$config["name"]." <".$config["email"].">\r\n" .
                 "X-Mailer: PHP/" . phpversion();
 
-    return mail($to, $subject, $message, $headers);
+    return mail((string)$to, (string)$subject, (string)$message, $headers);
 }//fun
 
 
 function format_fecha($fecha){
 	
-	$a_fecha = explode(' ',$fecha);
+	$a_fecha = explode(' ',(string)$fecha);
 	
-	return 'El '.$a_fecha[0].' a las '.$a_fecha[1];
+	return 'El '.$a_fecha[0].' a las '.@$a_fecha[1];
 	
 }
 
@@ -322,8 +323,8 @@ function saveImage($image_data, $s_nombre = "", $anchura = "", $hmax = "", $b_ex
         $anchura = $anchura2;
     }//if
 
-    $thumb = imagecreatetruecolor($anchura,$altura) or die('Cannot Initialize new GD image stream');
-    imagecopyresampled($thumb, $img, 0, 0, 0, 0, $anchura, $altura, $a_datos[0], $a_datos[1]);
+    $thumb = imagecreatetruecolor((int)$anchura,(int)$altura) or die('Cannot Initialize new GD image stream');
+    imagecopyresampled($thumb, $img, 0, 0, 0, 0, (int)$anchura, (int)$altura, $a_datos[0], $a_datos[1]);
 
 	/*
     //Marca de agua
@@ -361,8 +362,6 @@ function saveImage($image_data, $s_nombre = "", $anchura = "", $hmax = "", $b_ex
         $b_ok = imagepng($thumb,$config["img.ruta"].$s_nombre);
     }//if
 
-    imagedestroy($thumb);
-
     return $b_ok;
 
 }//fun
@@ -371,7 +370,7 @@ function saveImage($image_data, $s_nombre = "", $anchura = "", $hmax = "", $b_ex
 function filtro_url($cadena)
 {
     //$cadena=utf8_encode($cadena);
-    $cadena = trim(strtolower($cadena));
+    $cadena = trim(strtolower((string)$cadena));
     
     $cadena = str_replace("á","a",$cadena);
     $cadena = str_replace("ä","a",$cadena);
@@ -412,7 +411,7 @@ function filtro_url($cadena)
 
 
 function nl2p($texto){
-	$texto = nl2br($texto);
+	$texto = nl2br((string)$texto);
 	$texto = str_replace("<br />", "&nbsp;</p>\n<p>", $texto);
 	$texto = "<p>".$texto."</p>";
 	

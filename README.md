@@ -2,8 +2,9 @@
 Framework PHP
 
 ## Requisitos
-- PHP 7.4, Apache con `mod_rewrite` y `.htaccess` activo, MySQL 5.7 y la extensión `mysqli`.
+- PHP 8.2 o superior (probado en 8.2, 8.3, 8.4 y 8.5), Apache con `mod_rewrite` y `.htaccess` activo, MySQL 5.7 y la extensión `mysqli`.
 - La extensión GD (con JPEG y PNG) solo hace falta para subir imágenes. Sin ella, `saveImage` devuelve `false`.
+- La extensión `mbstring` solo hace falta para `filtro_mysql_utf8`.
 
 ## Puesta en marcha
 1. Carga `db.sql`. No crea ningún usuario.
@@ -25,3 +26,4 @@ Las contraseñas se guardan en md5 sin sal, y el login las envía ya en md5 desd
 - Los valores con `'` se guardan como `&#039;`. Escapa la salida con `escapar()`, que no codifica dos veces.
 - `get_ip` usa solo `REMOTE_ADDR` y deja de usar `X-Forwarded-For`.
 - Un `main.ini` en `cfw/specific/lang/` sustituye al general: tiene que incluir `text_error_usuario_mail`.
+- PHP 8.2 da `Deprecated` con las propiedades dinámicas: las subclases de `cfw/specific/` deben declarar las suyas, con una visibilidad compatible con la del padre. `private` da un fatal, y `protected` también si el padre la declara `public`, como `$tabla` en `Orm` o `$vars` en `Page`.

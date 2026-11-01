@@ -76,8 +76,8 @@ function saveImageProductos($image_data, $s_nombre = "", $anchura = "", $hmax = 
         $anchura = $anchura2;
     }//if
 
-    $thumb = imagecreatetruecolor($anchura,$altura) or die('Cannot Initialize new GD image stream');
-    imagecopyresampled($thumb, $img, 0, 0, 0, 0, $anchura, $altura, $a_datos[0], $a_datos[1]);
+    $thumb = imagecreatetruecolor((int)$anchura,(int)$altura) or die('Cannot Initialize new GD image stream');
+    imagecopyresampled($thumb, $img, 0, 0, 0, 0, (int)$anchura, (int)$altura, $a_datos[0], $a_datos[1]);
 
 
     //Marca de agua
@@ -86,15 +86,15 @@ function saveImageProductos($image_data, $s_nombre = "", $anchura = "", $hmax = 
     $black = imagecolorallocate($thumb, 0, 0, 0);
     if($anchura <= 180)
     {
-        imagestring($thumb, 1, ($anchura-84), ($altura-10),  'lagranm.com', $white);
+        imagestring($thumb, 1, (int)($anchura-84), (int)($altura-10),  'lagranm.com', $white);
     }//if
     elseif($anchura <= 360)
     {
-        imagestring($thumb, 24, ($anchura-180), ($altura-12),  'lagranm.com', $black);
+        imagestring($thumb, 24, (int)($anchura-180), (int)($altura-12),  'lagranm.com', $black);
     }//elseif
     else
     {
-        imagestring($thumb, 24, ($anchura-360), ($altura-15),  'lagranm.com', $forrest_green);
+        imagestring($thumb, 24, (int)($anchura-360), (int)($altura-15),  'lagranm.com', $forrest_green);
     }//else
     //Marca de agua
 
@@ -115,9 +115,6 @@ function saveImageProductos($image_data, $s_nombre = "", $anchura = "", $hmax = 
         $b_ok = imagepng($thumb,$config["img.productos.ruta"].$s_nombre);
     }//if
 
-    imagedestroy($thumb);
-    
-    
 
     return $b_ok;
 

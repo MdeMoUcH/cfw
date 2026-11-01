@@ -12,6 +12,15 @@
 
 class Orm extends Bbdd
 {
+    public $tabla;
+    public $campos;
+    public $primarykey;
+    public $campos_form;
+    public $tabla_otra;
+    public $tabla_cruce;
+    public $cruce_id;
+    public $checkbox_singles;
+    
     function __construct()
     {
 		parent::__construct();

@@ -12,6 +12,8 @@
 
 class Form //extends App
 {
+	public $vars;
+	public $a_default_buttons;
 	
 	function __construct(){
 		//parent::__construct();
@@ -172,7 +174,7 @@ class Form //extends App
 						}elseif(@$opcion["nick"] != ""){
 							$a_opciones[$opcion["nick"]] = $opcion["id"];
 						}else{
-							$a_opciones[$opcion["name"]] = $opcion["id"];
+							$a_opciones[(string)@$opcion["name"]] = $opcion["id"];
 						}
 						
 						if($opcion["id"] == @$opciones[$opcion["id"]]){
@@ -193,13 +195,13 @@ class Form //extends App
 					
 					foreach($opciones as $option=>$valueo){
 						if(is_array($valueo)){
-							if($valueo["checked"]){
+							if(@$valueo["checked"]){
 								$checked = true;
 							}else{
 								$checked = false;
 							}
-							$option = $valueo["nombre"];
-							$valueo = $valueo["value"];
+							$option = @$valueo["nombre"];
+							$valueo = @$valueo["value"];
 						}else{
 							if($value == $valueo){
 								$checked = true;
@@ -243,9 +245,9 @@ class Form //extends App
 						$a_opciones = array();
 						foreach($orm_aux->resultado as $opcion){
 							if(@$opcion["name"] != ""){
-								$a_opciones[$opcion["id"]] = utf8_encode($opcion["name"]);
+								$a_opciones[$opcion["id"]] = $opcion["name"];
 							}else{
-								$a_opciones[$opcion["id"]] = utf8_encode($opcion["nombre"]);
+								$a_opciones[$opcion["id"]] = (string)@$opcion["nombre"];
 							}
 						}
 						$opciones = $a_opciones;
@@ -297,7 +299,7 @@ class Form //extends App
 		foreach($a_rows as $row){
 			if(@$a_values[$row["name"]] != ""){
 				if(is_array($a_values[$row["name"]])){
-					$row["value"] = $a_values[$row["name"]][0];
+					$row["value"] = @$a_values[$row["name"]][0];
 				}else{
 					$row["value"] = $a_values[$row["name"]];
 				}
@@ -305,7 +307,7 @@ class Form //extends App
 			if(@$row["type"] == "checkbox_single" && @$a_values[$row["name"]] == 1){
 				$row["checked"] = true;
 			}
-			$s_content .= $this->getRow($row["title"],@$row["name"],@$row["type"],@$row["value"],@$row["onclick"],"",@$row["class"],@$row["opciones"],@$row["checked"],@$row["tabla"]);
+			$s_content .= $this->getRow(@$row["title"],@$row["name"],@$row["type"],@$row["value"],@$row["onclick"],"",@$row["class"],@$row["opciones"],@$row["checked"],@$row["tabla"]);
 		}
 		
 		if(!is_array($a_buttons) || count($a_buttons) < 1){
@@ -317,7 +319,7 @@ class Form //extends App
 			if((!isset($row["type"]) || $row["type"] == "") && (!isset($row["onclick"]) || $row["onclick"] == "")){
 				$type = "submit";
 			}
-			$s_content .= $this->getRow("",$row["name"],$type,@$row["value"],@$row["onclick"],"_colspan",@$row["class"]);
+			$s_content .= $this->getRow("",@$row["name"],$type,@$row["value"],@$row["onclick"],"_colspan",@$row["class"]);
 		}
 		
 		$tpl = new Template("html/form_main");

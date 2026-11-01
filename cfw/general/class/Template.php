@@ -14,6 +14,8 @@
 
 class Template extends App{
 	public $vars;
+	public $tpl_file;
+	public $mihtml;
 	
 	function __construct($template_file){
 		parent::__construct();

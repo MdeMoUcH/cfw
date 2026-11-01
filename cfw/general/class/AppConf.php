@@ -13,6 +13,7 @@
 class AppConf
 {	
 	public $config;
+	public $errores;
 	private static $a_config = null;
 	
 	function __construct()

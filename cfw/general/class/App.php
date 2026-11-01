@@ -12,7 +12,6 @@
 
 class App extends AppConf
 {
-	public $errores;
 	public $session;
 	
 	function __construct()
