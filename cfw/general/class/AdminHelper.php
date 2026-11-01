@@ -1,4 +1,4 @@
-<?
+<?php
 /***************
  * 
  * CFW - Framework MVC en PHP
@@ -13,14 +13,16 @@ class AdminHelper extends Page{
 	public $last_file_name = "";
 	protected $slug = "admin";
 	protected $jhtmlarea = false;
+	protected $extensiones_permitidas = array("tpl","css");
+	protected $s_error_subida = "";
+	//Unos 80 MB al decodificar: cabe en un memory_limit de 128M.
+	protected $img_max_pixeles = 16000000;
 	
 	
 	function __construct(){
 		parent::__construct();
 		
-		if(!$this->session->isUserAdmin()){
-			header("Location: ".$this->config["urlbase"]);
-		}
+		$this->exigirAdmin();
 		
 		if(@$this->slug_admin != ""){
 			$this->vars["menu"] = $this->get_menu($this->slug_admin);
@@ -59,8 +61,8 @@ class AdminHelper extends Page{
 				$tplelement = new Template("element_listado_pro");
 				$tplelement->vars["urlbase"] = $this->config["urlbase"];
 				$tplelement->vars["slug"] = $this->slug;
-				$tplelement->vars["titulo"] = $element["nombre"];
-				$tplelement->vars["nombre"] = $element["nombre"];
+				$tplelement->vars["titulo"] = escapar($element["nombre"]);
+				$tplelement->vars["nombre"] = escapar($element["nombre"]);
 				$tplelement->vars["id"] = $element["id"];
 				$aux_id = $element["id"];
 				$aux_name = "elementos[]";
@@ -79,8 +81,6 @@ class AdminHelper extends Page{
 			$this->add_include("js",$this->config["urlbase"]."js/prototype.js");
 			//$this->add_include("js",$this->config["urlbase"]."js/fabtabulous.js");
 			$this->add_include("js",$this->config["urlbase"]."js/tablekit.js");
-			
-			$this->add_include("css",$this->config["urlbase"]."css/tablas.css");
 		}else{
 			$tpl->vars["content"] = $this->titulo;
 			$tpl->vars["content"] = "No hay ningún ".$this->singular.".";
@@ -101,10 +101,9 @@ class AdminHelper extends Page{
 		$tpl->vars["slug"] = $this->slug;
 		
 		$orm = new $this->class();
-		if($id != ""){
-			//$element = @$orm->getBySlug($id);
-			$element = @$orm->getById($id);
-			
+		//$element = @$orm->getBySlug($id);
+		$element = ($id != "") ? @$orm->getById($id) : false;
+		if($element){
 			$tplelement = $this->load_template_single();
 			
 			foreach($element as $campo=>$valor){
@@ -147,38 +146,19 @@ class AdminHelper extends Page{
 		
 		$tplmsg = new Template("html/p_color");
 		
-		if($save != ""){
+		if($save != "" && @$_SERVER["REQUEST_METHOD"] === "POST"){
 			if($orm->insert($_POST)){
 				$tplmsg->vars["color"] = "Green";
 				$tplmsg->vars["text"] = "OK - ".$this->singular." insertado.";
 				
-				$s_msg = $tplmsg->get();
 				$id_aux = mysqli_insert_id($orm->conexion);
 				if($id_aux){
 					$id = $id_aux;
 				}
 				
-				//guardado de imágenes y archivos
-				if(count($_FILES) >= 1){
-					//muere($this,1);
-					foreach($_FILES as $name=>$file){
-						if($file["name"] != "" && $file["error"] == 0){
-							if(strpos($file["type"],"image") !== false){
-								if($this->saveImage($file,$id)){
-									$orm->updateField($id,$name,$this->last_file_name);
-								}else{
-									$tplmsg->vars["text"] .= "Hubo algún problema al subir la imágen de ".$name.".";
-								}
-							}else{
-								if($this->saveFile($file,$id)){
-									$orm->updateField($id,$name,$this->last_file_name);	
-								}else{
-									$tplmsg->vars["text"] .= "Hubo algún problema al subir el archivo de ".$name.".";
-								}
-							}
-						}
-					}//foreach
-				}
+				$this->guardarSubidas($orm,$id,$tplmsg);
+				
+				$s_msg = $tplmsg->get();
 				
 				if(@$this->categorias){
 					$this->guardarCategorias($id,$_POST["categorias"]);
@@ -285,11 +265,8 @@ class AdminHelper extends Page{
 		
 		//$this->add_include("js",$this->config["urlbase"]."js/color/jscolor.js");
 		
-		if(!$this->session->isUserAdmin()){
-			//header("Location: ".$this->config["urlbase"]."login");
-		}
 		$s_msg = "";
-		if($save != ""){
+		if($save != "" && @$_SERVER["REQUEST_METHOD"] === "POST"){
 			$orm = new $this->class();
 			$tplmsg = new Template("html/p_color");
 			
@@ -298,33 +275,13 @@ class AdminHelper extends Page{
 					$this->niapa_checkboxes($campo);
 				}
 			}
-			if($orm->update($_POST)){
+			if($orm->update($_POST,$id)){
 				$tplmsg->vars["color"] = "Green";
 				$tplmsg->vars["text"] = ucfirst($this->singular)." actualizado con éxito.";
 					
-				$s_msg = $tplmsg->get();
+				$this->guardarSubidas($orm,$id,$tplmsg);
 				
-				//guardado de imágenes y archivos
-				if(count($_FILES) >= 1){
-					//muere($this,1);
-					foreach($_FILES as $name=>$file){
-						if($file["name"] != "" && $file["error"] == 0){
-							if(strpos($file["type"],"image") !== false){
-								if($this->saveImage($file,$id)){
-									$orm->updateField($id,$name,$this->last_file_name);
-								}else{
-									$tplmsg->vars["text"] .= "Hubo algún problema al subir la imágen de ".$name.".";
-								}
-							}else{
-								if($this->saveFile($file,$id)){
-									$orm->updateField($id,$name,$this->last_file_name);	
-								}else{
-									$tplmsg->vars["text"] .= "Hubo algún problema al subir el archivo de ".$name.".";
-								}
-							}
-						}
-					}//foreach
-				}
+				$s_msg = $tplmsg->get();
 				
 				if(@$this->categorias){
 					if(isset($_POST["categorias"])){
@@ -349,15 +306,21 @@ class AdminHelper extends Page{
 	
 	
 	function delete($id){
+		if(@$_SERVER["REQUEST_METHOD"] !== "POST"){
+			http_response_code(405);
+			header("Allow: POST");
+			$this->showError("El borrado solo admite POST.");
+		}
+		
 		//$this->vars["menu"] = $this->get_menu($this->slug);
 		$tpl = new Template("main");
 		$tpl->vars["titulo"] = "Borrado de ".$this->titulo;
 		
 		$orm = new $this->class();
 		if($orm->delete($id)){
-			$tpl->vars["content"] = $this->singular." con id ".$id." se borrado correctamente.<br/><a href='javascript:window.history.back();'>Volver</a>";
+			$tpl->vars["content"] = $this->singular." con id ".escapar($id)." se borrado correctamente.<br/><a href='javascript:window.history.back();'>Volver</a>";
 		}else{
-			$tpl->vars["content"] = $this->singular." con id ".$id." no se borró correctamente.<br/><a href='javascript:window.history.back();'>Volver</a>";
+			$tpl->vars["content"] = $this->singular." con id ".escapar($id)." no se borró correctamente.<br/><a href='javascript:window.history.back();'>Volver</a>";
 		}
 		
 		
@@ -370,8 +333,18 @@ class AdminHelper extends Page{
 	
 	function editfield(){
 		$orm = new $this->class();
-		if($orm->updateField($_POST["id"],$_POST["field"],$_POST["value"])){
-			die($_POST["value"]);
+		$valor = @$_POST["value"];
+		$s_salida = $valor;
+		//Igual que users: la contraseña nunca en claro, ni vacía, ni devuelta en la respuesta.
+		if(@$_POST["field"] === "pass"){
+			if(!is_string($valor) || $valor === ""){
+				die("Hubo un error");
+			}
+			$valor = md5($valor);
+			$s_salida = "";
+		}
+		if($orm->updateField(@$_POST["id"],@$_POST["field"],$valor)){
+			die(escapar($s_salida));
 		}else{
 			die("Hubo un error");
 		}
@@ -379,7 +352,7 @@ class AdminHelper extends Page{
 	
 	
 	
-	public function load_template(){
+	protected function load_template(){
 		if(file_exists($this->config["pathbase"]."cfw/general/templates/".$this->template.".tpl") || 
 			file_exists($this->config["pathbase"]."cfw/specific/templates/".$this->template.".tpl")){
 			$tpl = new Template($this->template);
@@ -415,57 +388,128 @@ class AdminHelper extends Page{
 	
 		
 		
-	function saveImage($image_data, $s_nombre = "", $anchura = "", $hmax = "")
+	//Sube los archivos de $_FILES. El tipo se decide por el contenido, nunca por el MIME del cliente.
+	protected function guardarSubidas($orm,$id,$tplmsg){
+		foreach($_FILES as $name=>$file){
+			if(!is_string($file["name"]) || $file["name"] == "" || $file["error"] != 0){
+				continue;
+			}
+			$b_ok = false;
+			$this->s_error_subida = "campo no válido";
+			if(isset($orm->campos[$name]) && is_uploaded_file($file["tmp_name"])){
+				$a_datos = @getimagesize($file["tmp_name"]);
+				if($a_datos !== false && in_array($a_datos[2],array(1,2,3))){
+					$b_ok = $this->saveImage($file,$id);
+				}else{
+					$b_ok = $this->saveFile($file,$id);
+				}
+			}
+			if($b_ok){
+				$orm->updateField($id,$name,$this->last_file_name);
+			}else{
+				$tplmsg->vars["color"] = "Red";
+				$tplmsg->vars["text"] .= " Hubo algún problema al subir ".escapar($name).": ".$this->s_error_subida.".";
+			}
+		}//foreach
+	}
+	
+	
+	protected function rutaSubida($s_clave){
+		return isset($this->config_name) ? @$this->config[$this->config_name.$s_clave] : "";
+	}
+	
+	
+	protected function nombreSubida($s_nombre){
+		return preg_replace('/[^A-Za-z0-9_-]/','_',pathinfo(basename((string)$s_nombre),PATHINFO_FILENAME));
+	}
+	
+	
+	protected function saveImage($image_data, $s_nombre = "", $anchura = "", $hmax = "")
 	{
 		$b_ok = false;
+		$this->s_error_subida = "";
+
+		//Primero el contenido: así el rechazo de un archivo que no es imagen no depende de GD.
+		$s_image = $image_data["tmp_name"];
+		$a_datos = @getimagesize($s_image);
+		
+		if($a_datos === false || !in_array($a_datos[2],array(1,2,3)) || $a_datos[0] < 1 || $a_datos[1] < 1)
+		{
+			$this->s_error_subida = "el contenido no es una imagen admitida";
+			return false;
+		}//if
+		
+		//Las dimensiones vienen de la cabecera: decodificar una imagen enorme agotaría la memoria con un fatal.
+		if($a_datos[0] * $a_datos[1] > $this->img_max_pixeles)
+		{
+			$this->s_error_subida = "la imagen es demasiado grande";
+			return false;
+		}//if
+		
+		if(!function_exists("imagecreatetruecolor"))
+		{
+			error_log("CFW: saveImage necesita la extensión GD");
+			$this->s_error_subida = "el servidor no tiene GD";
+			return false;
+		}//if
+		
+		//GD puede estar compilada sin algún formato, y llamar a la función daría un fatal.
+		$a_funciones = array(1 => array("imagecreatefromgif","imagegif"), 2 => array("imagecreatefromjpeg","imagejpeg"), 3 => array("imagecreatefrompng","imagepng"));
+		if(!function_exists($a_funciones[$a_datos[2]][0]) || !function_exists($a_funciones[$a_datos[2]][1]))
+		{
+			error_log("CFW: GD no admite el tipo de imagen ".$a_datos[2]);
+			$this->s_error_subida = "el servidor no admite este tipo de imagen";
+			return false;
+		}//if
 
 		if($anchura == "")
 		{
-			$anchura = $this->config[$this->config_name.".img.width"];
+			$anchura = $this->rutaSubida(".img.width");
 		}//if
 
 		if($hmax == "")
 		{
-			$hmax = $this->config[$this->config_name.".img.height"];
+			$hmax = $this->rutaSubida(".img.height");
 		}//if
 		
-		if($s_nombre != "")
+		$s_ruta = $this->rutaSubida(".img.path");
+		
+		if($anchura <= 0 || $hmax <= 0 || $s_ruta == "")
 		{
-			$b_ext = true;
+			error_log("CFW: saveImage sin configuración de tamaño o ruta");
+			$this->s_error_subida = "falta la configuración";
+			return false;
 		}//if
-		else
+		
+		//La extensión sale siempre del tipo real, nunca del nombre enviado.
+		$s_nombre = $this->nombreSubida($s_nombre != "" ? $s_nombre : $image_data["name"]);
+		
+		if($s_nombre == "")
 		{
-			$s_nombre = $image_data["name"];
-			$b_ext = false;
-		}//else
-
-		$s_image = $image_data["tmp_name"];
-
-		$a_datos = getimagesize($s_image);
+			$this->s_error_subida = "nombre no válido";
+			return false;
+		}//if
 
 		if($a_datos[2] == 1)
 		{
 			$img = @imagecreatefromgif($s_image);
-			if($b_ext)
-			{
-				$s_nombre .= ".gif";
-			}//if
+			$s_nombre .= ".gif";
 		}//if
 		if($a_datos[2] == 2)
 		{
 			$img = @imagecreatefromjpeg($s_image);
-			if($b_ext)
-			{
-				$s_nombre .= ".jpg";
-			}//if
+			$s_nombre .= ".jpg";
 		}//if
 		if($a_datos[2] == 3)
 		{
 			$img = @imagecreatefrompng($s_image);
-			if($b_ext)
-			{
-				$s_nombre .= ".png";
-			}//if
+			$s_nombre .= ".png";
+		}//if
+		
+		if(!$img)
+		{
+			$this->s_error_subida = "el contenido no es una imagen admitida";
+			return false;
 		}//if
 
 		$ratio = ($a_datos[0] / $anchura);
@@ -476,8 +520,15 @@ class AdminHelper extends Page{
 			$altura = $hmax;
 			$anchura = $anchura2;
 		}//if
+		$anchura = max(1,(int)$anchura);
+		$altura = max(1,(int)$altura);
 
-		$thumb = imagecreatetruecolor($anchura,$altura) or die('Cannot Initialize new GD image stream');
+		$thumb = imagecreatetruecolor($anchura,$altura);
+		if(!$thumb)
+		{
+			$this->s_error_subida = "no se pudo procesar la imagen";
+			return false;
+		}//if
 		imagecopyresampled($thumb, $img, 0, 0, 0, 0, $anchura, $altura, $a_datos[0], $a_datos[1]);
 
 
@@ -505,62 +556,98 @@ class AdminHelper extends Page{
 		if($a_datos[2] == 1)
 		{
 			//header("Content-type: image/gif");
-			$b_ok = imagegif($thumb,$this->config[$this->config_name.".img.path"].$s_nombre);
+			$b_ok = @imagegif($thumb,$s_ruta.$s_nombre);
 		}
 		if($a_datos[2] == 2)
 		{
 			//header("Content-type: image/jpeg");
-			$b_ok = imagejpeg($thumb,$this->config[$this->config_name.".img.path"].$s_nombre);
+			$b_ok = @imagejpeg($thumb,$s_ruta.$s_nombre);
 		}//if
 		if($a_datos[2] == 3)
 		{
 			//header("Content-type: image/png");
-			$b_ok = imagepng($thumb,$this->config[$this->config_name.".img.path"].$s_nombre);
+			$b_ok = @imagepng($thumb,$s_ruta.$s_nombre);
 		}//if
 
 		imagedestroy($thumb);
+		imagedestroy($img);
+		
+		if(!$b_ok)
+		{
+			error_log("CFW: no se pudo escribir ".$s_ruta.$s_nombre);
+			$this->s_error_subida = "no se pudo guardar el archivo";
+			return false;
+		}//if
 		
 		$this->last_file_name = $s_nombre;
 
-		return $b_ok;
+		return true;
 	}//fun
 	
 		
 		
-	function saveFile($file_data, $s_nombre = "")
+	protected function saveFile($file_data, $s_nombre = "")
 	{	
+		$this->s_error_subida = "";
+		
 		if($s_nombre == "")
 		{
 			$s_nombre = $file_data["name"];
-			$b_ext = false;
+			$s_ext = strtolower(pathinfo(basename($s_nombre),PATHINFO_EXTENSION));
 		}//if
+		elseif($file_data["type"] == "application/octet-stream" || $file_data["type"] == "text/html")
+		{
+			$s_ext = "tpl";
+		}//elseif
+		elseif($file_data["type"] == "text/css")
+		{
+			$s_ext = "css";
+		}//elseif
 		else
 		{
-			$b_ext = true;
-		}
+			$s_ext = "";
+		}//else
 		
-		if($b_ext){
-			if($file_data["type"] == "application/octet-stream" || $file_data["type"] == "text/html")
-			{
-				$s_nombre = $s_nombre.".tpl";
-			}elseif($file_data["type"] == "text/css"){
-				$s_nombre = $s_nombre.".css";
-			}else{
-				muere($file_data["type"],1);
-			}
-		}
+		if(!in_array($s_ext,$this->extensiones_permitidas))
+		{
+			$this->s_error_subida = "tipo de archivo no permitido";
+			return false;
+		}//if
+		
+		if(strpos((string)@file_get_contents($file_data["tmp_name"]),"<?") !== false)
+		{
+			$this->s_error_subida = "el contenido no está permitido";
+			return false;
+		}//if
+		
+		$s_ruta = $this->rutaSubida(".path");
+		$s_nombre = $this->nombreSubida($s_nombre);
+		
+		if($s_ruta == "" || $s_nombre == "")
+		{
+			$this->s_error_subida = "falta la configuración o el nombre no es válido";
+			return false;
+		}//if
+		
+		$s_nombre .= ".".$s_ext;
+		if(!@copy($file_data["tmp_name"],$s_ruta.$s_nombre))
+		{
+			error_log("CFW: no se pudo escribir ".$s_ruta.$s_nombre);
+			$this->s_error_subida = "no se pudo guardar el archivo";
+			return false;
+		}//if
 		
 		$this->last_file_name = $s_nombre;
-		return copy($file_data["tmp_name"],$this->config[$this->config_name.".path"].$s_nombre);
+		return true;
 	}//fun
 	
 	
-	function guardarCategorias($id,$a_data){
+	protected function guardarCategorias($id,$a_data){
 		$cat = new $this->categorias_orm();
 		
 		$cat->limpiarCategorias($id);
 		
-		foreach($a_data as $categoria){
+		foreach((array)$a_data as $categoria){
 			$cat->addCat($id,$categoria);
 		}
 	}

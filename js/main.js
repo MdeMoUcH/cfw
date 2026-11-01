@@ -1,8 +1,16 @@
 /*** CFW ***/
 
+var text_rellena_ambos_campos = "Rellena ambos campos.";
+var text_aceptar_terminos = "Tienes que aceptar las condiciones.";
+var text_email_incorrecto = "El email no es correcto.";
+var text_contrasenas_iguales = "Las contraseñas tienen que ser iguales.";
+var text_rellena_campos_obligatorios = "Rellena todos los campos obligatorios.";
+var text_algun_error = "Ha habido algún error.";
+var text_salir = "¿Seguro que quieres salir?";
+
 
 function sendLoginForm(){
-	if($("#user").val() != "" && $("#pass").val() != ""){
+	if($("#nick").val() != "" && $("#pass").val() != ""){
 		$("#pass").val(md5($("#pass").val()));
 		$("#timezone").val(Intl.DateTimeFormat().resolvedOptions().timeZone);
 		$("#formulario").submit();

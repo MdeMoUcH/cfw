@@ -1,4 +1,4 @@
-<?
+<?php
 /***************
  * 
  * CFW - Framework MVC en PHP
@@ -15,9 +15,7 @@ class cuenta extends Page{
 	
 	function __construct(){
 		parent::__construct();
-		if(!$this->session->isUserLogged()){
-			header("Location: ".$this->config["urlbase"]);
-		}
+		$this->exigirUsuario();
 		$this->vars["menu"] = $this->get_menu("cuenta");
 	}
 	
@@ -27,29 +25,33 @@ class cuenta extends Page{
 		$ormuser = new Usuarios();
 		
 		$ormuser->getById($this->session->data["id_usuario"]);
-		$tpl->vars["email"] = $ormuser->resultado[0]["email"];
-		$tpl->vars["nick"] = $ormuser->resultado[0]["nick"];
+		$s_email_actual = $ormuser->resultado[0]["email"];
+		$tpl->vars["email"] = escapar($s_email_actual);
 		
 		
 		if(@$_POST["save"] == "edituser"){
 			$tplaux = new Template("html/p_color");
 			$tplaux->vars["color"] = "Red";
-			$re = '#^[a-z0-9.!\#$%&\'*+-/=?^_`{|}~]+@([0-9.]+|([^\s]+\.+[a-z]{2,6}))(\.[a-z]{2,6})?$#si';
-			if(preg_match($re, $_POST["email"])){
-				if($_POST["pass1"] == $_POST["pass2"]){
-					$a_data = array("id" => $this->session->data["id_usuario"],
-									"email" => $_POST["email"],
-									"nick" => $_POST["nick"]);
-					if($_POST["pass1"] != ""){
-						$a_data["pass"] = md5($_POST["pass1"]);
-					}
-					if($ormuser->update($a_data)){
-						$tplaux->vars["color"] = "Green";
-						$tplaux->vars["text"] = "Los datos se actualizaron correctamente.";
-						$tpl->vars["nick"] = $_POST["nick"];
-						$tpl->vars["email"] = $_POST["email"];
+			$s_pass1 = is_string(@$_POST["pass1"]) ? $_POST["pass1"] : "";
+			$s_pass2 = is_string(@$_POST["pass2"]) ? $_POST["pass2"] : "";
+			$s_pass_actual = is_string(@$_POST["pass_actual"]) ? $_POST["pass_actual"] : "";
+			if(email_valido(@$_POST["email"])){
+				if($s_pass1 === $s_pass2){
+					//El email guardado ya pasó por filtro(): se decodifica para que no se codifique dos veces.
+					if($s_pass_actual != "" && $ormuser->comprobarUserPass(html_entity_decode($s_email_actual,ENT_QUOTES,"UTF-8"),md5($s_pass_actual))){
+						$a_data = array("email" => $_POST["email"]);
+						if($s_pass1 != ""){
+							$a_data["pass"] = md5($s_pass1);
+						}
+						if($ormuser->update($a_data,$this->session->data["id_usuario"])){
+							$tplaux->vars["color"] = "Green";
+							$tplaux->vars["text"] = "Los datos se actualizaron correctamente.";
+							$tpl->vars["email"] = escapar($_POST["email"]);
+						}else{
+							$tplaux->vars["text"] = "Hubo algún problema, vuelvaló a intentar más tarde.";
+						}
 					}else{
-						$tplaux->vars["text"] = "Hubo algún problema, vuelvaló a intentar más tarde.";
+						$tplaux->vars["text"] = "No se realizó ningún cambio, la contraseña actual no es correcta.";
 					}
 				}else{
 					$tplaux->vars["text"] = "No se realizó ningún cambio, las contraseñas tienen que ser iguales.";

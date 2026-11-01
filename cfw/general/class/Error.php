@@ -1,4 +1,4 @@
-<?
+<?php
 /***************
  * 
  * CFW - Framework MVC en PHP
@@ -19,7 +19,7 @@ class ErrorCFW extends Page
 			$s_errores = "";
 			foreach($errores as $error)
 			{
-				$s_errores .= "<h2>".$error."</h2>";
+				$s_errores .= "<h2>".escapar($error)."</h2>";
 			}
 			$vars["error"] = $s_errores;
 		}

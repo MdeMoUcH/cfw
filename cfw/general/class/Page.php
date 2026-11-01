@@ -1,4 +1,4 @@
-<?
+<?php
 /***************
  * 
  * CFW - Framework MVC en PHP
@@ -29,6 +29,55 @@ class Page extends App
 		//$this->add_include("css",$this->config["urlbase"]."css/style.css");
 		$this->add_include("css",$this->config["urlbase"]."css/tablas.css");
 	}//fun __construct
+	
+	
+	protected function redirigir($url)
+	{
+		header("Location: ".$url);
+		exit;
+	}//fun redirigir
+	
+	
+	protected function exigirUsuario()
+	{
+		$this->revalidarSesion(false);
+	}//fun exigirUsuario
+	
+	
+	protected function exigirAdmin()
+	{
+		$this->revalidarSesion(true);
+	}//fun exigirAdmin
+	
+	
+	//Comprueba en la BD que el usuario de la sesión sigue activo y, si se pide, que sigue siendo administrador.
+	private function revalidarSesion($b_admin)
+	{
+		$s_destino = $this->config["urlbase"]."admin/login";
+		
+		if(!$this->session->isUserLogged() || ($b_admin && !$this->session->isUserAdmin()))
+		{
+			$this->redirigir($s_destino);
+		}//if
+		
+		$orm = new Usuarios();
+		$a_usuario = $orm->getActivoById($this->session->data["id_usuario"]);
+		$b_error = count($orm->errores) >= 1;
+		$orm->cerrar();
+		
+		if($b_error)
+		{
+			//Un fallo de la BD no debe cerrar la sesión.
+			http_response_code(503);
+			$this->showError("El servicio no está disponible en este momento.");
+		}//if
+		
+		if(!$a_usuario || ($b_admin && $a_usuario["fk_tipo_usuario"] != 1))
+		{
+			$this->session->setUserOut();
+			$this->redirigir($s_destino);
+		}//if
+	}//fun revalidarSesion
 	
 	
 	function set_vars($vars)
@@ -96,6 +145,14 @@ class Page extends App
 			$vars["url_admin"] = "admin";
 		}
 		
+		
+		$vars["enlaces_usuario"] = "";
+		if($this->session->isUserLogged()){
+			$vars["enlaces_usuario"] .= '<li><a href="'.$this->config["urlbase"].'admin/cuenta">Cuenta</a></li>';
+		}
+		if($this->session->isUserAdmin()){
+			$vars["enlaces_usuario"] .= '<li><a href="'.$this->config["urlbase"].'admin/users">Usuarios</a></li>';
+		}
 		
 		$tpl->set_vars($vars);
 		//muere($tpl->vars,1);

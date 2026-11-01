@@ -1,4 +1,4 @@
-<?
+<?php
 /***************
  * 
  * CFW - Framework MVC en PHP
@@ -10,6 +10,7 @@
 class errorpage extends Page{	
 	
 	function init(){
+		http_response_code(404);
 		$this->showError("Error 404");
 	}
 }//class

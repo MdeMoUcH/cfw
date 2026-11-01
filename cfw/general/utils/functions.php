@@ -1,4 +1,4 @@
-<?
+<?php
 /***************
  * 
  * CFW - Framework MVC en PHP
@@ -52,40 +52,137 @@ function method_is_public($class, $method)
 }//fun method_is_public
 
 
+function metodo_despachable($class, $method)
+{
+	if(strpos($method, "__") === 0 || !method_exists($class, $method) || method_exists("Page", $method))
+	{
+		return false;
+	}//if
+	
+	$reflection = new ReflectionMethod($class, $method);
+	if(!$reflection->isPublic() || $reflection->isStatic() || $reflection->isAbstract()
+		|| $reflection->isConstructor() || $reflection->isDestructor())
+	{
+		return false;
+	}//if
+	
+	return !in_array($reflection->getDeclaringClass()->getName(), array("AppConf", "App", "Page"));
+}//fun metodo_despachable
+
+
+function escapar($s)
+{
+	if(!is_scalar($s))
+	{
+		return "";
+	}//if
+	
+	return htmlspecialchars((string)$s, ENT_QUOTES | ENT_SUBSTITUTE, "UTF-8", false);
+}//fun escapar
+
+
+function email_valido($s)
+{
+	$re = '#^[a-z0-9.!\#$%&\'*+-/=?^_`{|}~]+@([0-9.]+|([^\s]+\.+[a-z]{2,6}))(\.[a-z]{2,6})?$#si';
+	
+	//Lo que Orm::filtro o la columna utf8 vaciarían o recortarían: UTF-8 inválido, etiquetas, control y 4 bytes.
+	$re_guardable = '/^[^<>\x00-\x1F\x7F\x{10000}-\x{10FFFF}]+$/uD';
+	
+	return is_string($s) && strlen($s) <= 254 && preg_match($re_guardable, $s) === 1 && preg_match($re, $s) === 1;
+}//fun email_valido
+
+
 function get_ip()
 {
-	$realip = '';
-	
-	if(@$_SERVER["SHELL"] == '/bin/bash' || @$_SERVER["SHELL"] == '/bin/sh'){
-		   $realip = '127.0.0.1';
-	}elseif($_SERVER){
-       if ( @$_SERVER["HTTP_X_FORWARDED_FOR"] ){
-           $realip = $_SERVER["HTTP_X_FORWARDED_FOR"];
-       } elseif ( @$_SERVER["HTTP_CLIENT_IP"] ) {
-           $realip = $_SERVER["HTTP_CLIENT_IP"];
-       } else {
-		   if(@$_SERVER["REMOTE_ADDR"]){
-				$realip = @$_SERVER["REMOTE_ADDR"];
-		   }elseif(@$_SERVER["SHELL"] == '/bin/bash'){
-			   $realip = '127.0.0.1';
-		   }
-       }
-    } else {
-       if ( getenv( "HTTP_X_FORWARDED_FOR" ) ) {
-           $realip = getenv( "HTTP_X_FORWARDED_FOR" );
-       } elseif ( getenv( "HTTP_CLIENT_IP" ) ) {
-           $realip = getenv( "HTTP_CLIENT_IP" );
-       } else {
-           $realip = getenv( "REMOTE_ADDR" );
-       }
-    }
-
-    return($realip);
+	return isset($_SERVER["REMOTE_ADDR"]) ? $_SERVER["REMOTE_ADDR"] : "127.0.0.1";
 }//fun
 
 function getIP(){
 	return get_ip();
 }
+
+
+//Límite de intentos de login por IP y email.
+define("CFW_INTENTOS_MAX", 5);
+define("CFW_INTENTOS_VENTANA", 900);
+
+function intentos_archivo($s_email)
+{
+	$s_dir = sys_get_temp_dir()."/cfw_intentos/";
+	if(!is_dir($s_dir) && !@mkdir($s_dir, 0700, true) && !is_dir($s_dir))
+	{
+		error_log("CFW: no se pudo crear ".$s_dir);
+		return "";
+	}//if
+	
+	//Normaliza como Orm::filtro. Las variantes del cotejamiento (ŭ, ſ) las resuelve login con el email guardado.
+	return $s_dir.md5(get_ip()."|".strtolower(trim(strip_tags(trim($s_email)))));
+}//fun intentos_archivo
+
+
+function intentos_bloqueado($s_email)
+{
+	$s_archivo = intentos_archivo($s_email);
+	if($s_archivo == "" || !is_file($s_archivo))
+	{
+		return false;
+	}//if
+	
+	clearstatcache(true, $s_archivo);
+	return (time() - filemtime($s_archivo)) < CFW_INTENTOS_VENTANA
+		&& (int)file_get_contents($s_archivo) >= CFW_INTENTOS_MAX;
+}//fun intentos_bloqueado
+
+
+function intentos_fallo($s_email)
+{
+	$s_archivo = intentos_archivo($s_email);
+	if($s_archivo == "")
+	{
+		return;
+	}//if
+	
+	$fd = @fopen($s_archivo, "c+");
+	if(!$fd || !flock($fd, LOCK_EX))
+	{
+		error_log("CFW: no se pudo escribir ".$s_archivo);
+		return;
+	}//if
+	
+	$a_stat = fstat($fd);
+	$i_fallos = 0;
+	if((time() - $a_stat["mtime"]) < CFW_INTENTOS_VENTANA)
+	{
+		$i_fallos = (int)stream_get_contents($fd);
+	}//if
+	ftruncate($fd, 0);
+	rewind($fd);
+	fwrite($fd, (string)($i_fallos + 1));
+	fflush($fd);
+	flock($fd, LOCK_UN);
+	fclose($fd);
+	
+	if(mt_rand(1, 100) == 1)
+	{
+		foreach(glob(dirname($s_archivo)."/*") as $s_viejo)
+		{
+			if((time() - filemtime($s_viejo)) >= CFW_INTENTOS_VENTANA)
+			{
+				@unlink($s_viejo);
+			}//if
+		}//foreach
+	}//if
+}//fun intentos_fallo
+
+
+function intentos_limpiar($s_email)
+{
+	$s_archivo = intentos_archivo($s_email);
+	if($s_archivo != "" && is_file($s_archivo))
+	{
+		@unlink($s_archivo);
+	}//if
+}//fun intentos_limpiar
 
 
 function filtro_utf($cadena)

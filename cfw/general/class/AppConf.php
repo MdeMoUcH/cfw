@@ -1,4 +1,4 @@
-<?
+<?php
 /***************
  * 
  * CFW - Framework MVC en PHP
@@ -13,12 +13,17 @@
 class AppConf
 {	
 	public $config;
+	private static $a_config = null;
 	
 	function __construct()
 	{	
 		$this->errores = Array();
 		
-		$this->config = parse_ini_file("cfw/config.ini");
+		if(self::$a_config === null)
+		{
+			self::$a_config = parse_ini_file(dirname(__DIR__, 2)."/config.ini");
+		}//if
+		$this->config = self::$a_config;
 		
 		if($this->config["desarrollo"])
 		{

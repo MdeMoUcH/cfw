@@ -18,36 +18,60 @@ class Bbdd extends App
 		
         $this->resultado = array();
 
-        $this->conexion = mysqli_connect($this->config["db.host"],$this->config["db.user"],$this->config["db.pass"],$this->config["db.name"])
-                or $this->errores[] = "No se pudo conectar a la base de datos (".mysqli_error($this->conexion).")";
-
-        //mysqli_select_db($this->config["db.name"]) or $this->errores[] = "No se pudo seleccionar la base de datos (".mysqli_error().")";
+        $this->conexion = @mysqli_connect($this->config["db.host"],$this->config["db.user"],$this->config["db.pass"],$this->config["db.name"]);
+        
+        if($this->conexion)
+        {
+            mysqli_set_charset($this->conexion, "utf8");
+        }//if
+        else
+        {
+            error_log("CFW: no se pudo conectar a la base de datos: ".mysqli_connect_error());
+            $this->errores[] = "No se pudo conectar a la base de datos.";
+        }//else
     }//constructor
 
 
     function cerrar()
     {
-        mysqli_close($this->conexion);
+        if($this->conexion)
+        {
+            mysqli_close($this->conexion);
+            $this->conexion = false;
+        }//if
     }//fun
     
     function close()
     {
-        mysqli_close($this->conexion);
+        $this->cerrar();
     }//fun
     
 
 
     function ejecutarConsulta($s_sql)
     {
-        $result = $this->conexion->query($s_sql)
-				or $this->errores[] = "Error en la consulta. (".mysqli_error($this->conexion).")";
-
         $this->resultado = array();
-
-        while(@$aux = mysqli_fetch_array($result))
+        
+        if(!$this->conexion)
         {
-            $this->resultado[] = $aux;
-        }//while
+            $this->errores[] = "Error en la consulta.";
+            return false;
+        }//if
+        
+        $result = $this->conexion->query($s_sql);
+        
+        if($result === false)
+        {
+            error_log("CFW: error en la consulta: ".mysqli_error($this->conexion));
+            $this->errores[] = "Error en la consulta.";
+        }//if
+        elseif($result instanceof mysqli_result)
+        {
+            while($aux = mysqli_fetch_array($result))
+            {
+                $this->resultado[] = $aux;
+            }//while
+        }//elseif
 
         //$this->cerrar();
 
@@ -68,10 +92,17 @@ class Bbdd extends App
 
     function ejecutarInsertUpdate($s_sql)
     {
+        if(!$this->conexion)
+        {
+            $this->errores[] = "Error en el insert-update.";
+            return false;
+        }//if
+        
         $b_ok = $this->conexion->query($s_sql);
         if(!$b_ok)
         {
-            $this->errores[] = "Error en el insert-update. (".mysqli_error($this->conexion).")";
+            error_log("CFW: error en el insert-update: ".mysqli_error($this->conexion));
+            $this->errores[] = "Error en el insert-update.";
         }//if
 
         return $b_ok;

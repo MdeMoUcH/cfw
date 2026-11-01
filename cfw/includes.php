@@ -1,4 +1,4 @@
-<?
+<?php
 /***************
  * 
  * CFW - Framework MVC en PHP
@@ -8,21 +8,21 @@
  ***************/
 
 
-$s_path = '';
-require_once($s_path.'cfw/general/utils/functions.php');
+$s_path = __DIR__.'/';
+require_once($s_path.'general/utils/functions.php');
 
-if(file_exists($s_path.'cfw/specific/utils/functions.php')){
-	require_once($s_path.'cfw/specific/utils/functions.php');
+if(file_exists($s_path.'specific/utils/functions.php')){
+	require_once($s_path.'specific/utils/functions.php');
 }//if
 
-if(file_exists($s_path.'cfw/specific/utils/PHPMailer.php')){
-	require_once($s_path.'cfw/specific/utils/PHPMailer.php');
-	require_once($s_path.'cfw/specific/utils/SMTP.php');
+if(file_exists($s_path.'specific/utils/PHPMailer.php')){
+	require_once($s_path.'specific/utils/PHPMailer.php');
+	require_once($s_path.'specific/utils/SMTP.php');
 }//if
 
 /*
-if(file_exists($s_path.'cfw/specific/utils/mpdf/mpdf.php')){
-	require_once($s_path.'cfw/specific/utils/mpdf/mpdf.php');
+if(file_exists($s_path.'specific/utils/mpdf/mpdf.php')){
+	require_once($s_path.'specific/utils/mpdf/mpdf.php');
 }//if*/
 
 $a_clases = array('AppConf','App','Msession','Bbdd','Template','Page',
@@ -41,10 +41,10 @@ foreach($a_orms as $archivo){
 
 
 function my_require_once($nombre){
-	$s_path = '';
-	if(file_exists($s_path.'cfw/specific/'.$nombre.'.php')){
-		require_once($s_path.'cfw/specific/'.$nombre.'.php');
+	$s_path = __DIR__.'/';
+	if(file_exists($s_path.'specific/'.$nombre.'.php')){
+		require_once($s_path.'specific/'.$nombre.'.php');
 	}else{
-		require_once($s_path.'cfw/general/'.$nombre.'.php');
+		require_once($s_path.'general/'.$nombre.'.php');
 	}//else
 }//fun my_require_once

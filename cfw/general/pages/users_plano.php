@@ -1,4 +1,4 @@
-<?
+<?php
 
 class users extends AdminHelper{
 	protected $class = "Usuarios";

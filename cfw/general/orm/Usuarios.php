@@ -25,8 +25,7 @@ class Usuarios extends Orm
 							"ultimo_acceso" => "date",
 							"visitas" => "num",
 							"activo" => "num",
-							"borrado" => "num",
-							"init" => "num");
+							"borrado" => "num");
 							
 		$this->primarykey = "id";
 	
@@ -37,6 +36,14 @@ class Usuarios extends Orm
 									"title" => "E-mail",
 									"name" => "email",
 									"type" => "text"),
+								"pass" => array(
+									"title" => "Contraseña",
+									"name" => "pass",
+									"type" => "password"),
+								"pass_confirm" => array(
+									"title" => "Confirmar contraseña",
+									"name" => "pass_confirm",
+									"type" => "password"),
 								"idioma" => array(
 									"title" => "Idioma",
 									"name" => "fk_idioma",
@@ -60,28 +67,15 @@ class Usuarios extends Orm
 	}//constructor
 
 
-	function comprobarInvitado($user){
-		$s_sql = "SELECT * FROM ".$this->tabla." WHERE email = '".$this->filtro($user)."' AND (pass = '' OR pass IS null) AND invitado = 1 AND borrado = 0;";
-		
-		$this->ejecutarConsulta($s_sql);
-		
-		if(isset($this->resultado[0])){
-			return true;
-		}else{
-			return false;
-		}
-	}
-
-
 	function comprobarUserPass($user, $pass){
-		$s_sql = "SELECT * FROM ".$this->tabla." WHERE email = '".$this->filtro($user)."' AND pass <> '' AND pass = '".$this->filtro($pass)."' AND borrado = 0;";
+		$s_sql = "SELECT * FROM ".$this->tabla." WHERE email = '".$this->filtro($user)."' AND pass <> '' AND pass = '".$this->filtro($pass)."' AND activo = 1 AND borrado = 0;";
 		
 		return $this->ejecutarConsulta($s_sql);
 	}
 	
 	
 	function insert($a_array, $tabla = ''){
-		$s_sql = "SELECT * FROM ".$this->tabla." WHERE email = '".$this->filtro($a_array["email"])."' AND borrado = 0 AND (pass IS NOT NULL OR pass <> '');";
+		$s_sql = "SELECT * FROM ".$this->tabla." WHERE email = '".$this->filtro(@$a_array["email"])."' AND borrado = 0 AND (pass IS NOT NULL AND pass <> '');";
 		
 		$this->ejecutarConsulta($s_sql);
 		
@@ -95,11 +89,12 @@ class Usuarios extends Orm
 	}
 	
 	function update($a_datos, $id = ""){
+		$id_efectivo = ($id != "") ? $id : @$a_datos["id"];
 		if(@$a_datos["email"] != ""){
 			$s_sql = "SELECT * FROM ".$this->tabla." WHERE email = '".$this->filtro($a_datos["email"])."' AND borrado = 0";
 			
 			if($this->ejecutarConsulta($s_sql)){
-				if($this->resultado[0]["id"] != $id && $this->resultado[0]["id"] != $a_datos["id"]){
+				if($this->resultado[0]["id"] != $id_efectivo){
 					$tpl = new Template('main');
 					$this->errores[] = $tpl->vars['text_error_usuario_mail'];
 					return false;
@@ -122,7 +117,10 @@ class Usuarios extends Orm
 	}
 	
 	function getUserNameById($id){
-		$s_sql = "SELECT email FROM ".$this->tabla." WHERE id = ".$this->filtro($id)."";
+		if(($id = $this->filtroId($id)) === false){
+			return "Usuario Desconocido";
+		}
+		$s_sql = "SELECT email FROM ".$this->tabla." WHERE id = ".$id."";
 		
 		if($this->ejecutarConsulta($s_sql)){
 			return $this->resultado[0]["email"];
@@ -131,18 +129,6 @@ class Usuarios extends Orm
 		}
 	}
 	
-	
-	function getLastUserByFkIdUsuario($id){
-		$s_sql = "SELECT * FROM ".$this->tabla." WHERE fk_usuario = ".$this->filtro($id)." AND borrado = 0 ORDER by fecha DESC LIMIT 1";
-		
-		return $this->ejecutarConsulta($s_sql);
-	}
-	
-	function getUsersByFkIdUsuario($id){
-		$s_sql = "SELECT * FROM ".$this->tabla." WHERE fk_usuario = ".$this->filtro($id)." AND borrado = 0";
-		
-		return $this->ejecutarConsulta($s_sql);
-	}
 	
 	function getUserByEmail($email){
 		$s_sql = "SELECT * FROM ".$this->tabla." WHERE email = '".$this->filtro($email)."' AND borrado = 0";

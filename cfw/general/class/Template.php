@@ -1,4 +1,4 @@
-<?
+<?php
 /***************
  * 
  * CFW - Framework MVC en PHP
@@ -15,7 +15,7 @@
 class Template extends App{
 	public $vars;
 	
-	function Template($template_file){
+	function __construct($template_file){
 		parent::__construct();
 		
 		$pos = strpos($template_file,'.tpl');
@@ -23,13 +23,16 @@ class Template extends App{
 			$template_file = substr($template_file,0,$pos);
 		}
 		
-		if(file_exists($this->config['pathbase'].'cfw/specific/templates/'.$template_file.'.tpl')){
+		$b_valido = preg_match('#^[A-Za-z0-9_-]+(/[A-Za-z0-9_-]+)*$#D',$template_file) === 1;
+		
+		if($b_valido && file_exists($this->config['pathbase'].'cfw/specific/templates/'.$template_file.'.tpl')){
 			$this->tpl_file = $this->config['pathbase'].'cfw/specific/templates/'.$template_file.'.tpl';
 			$this->set_ini_vars($template_file);
-		}elseif(file_exists($this->config['pathbase'].'cfw/general/templates/'.$template_file.'.tpl')){
+		}elseif($b_valido && file_exists($this->config['pathbase'].'cfw/general/templates/'.$template_file.'.tpl')){
 			$this->tpl_file = $this->config['pathbase'].'cfw/general/templates/'.$template_file.'.tpl';
 			$this->set_ini_vars($template_file);
 		}else{
+			http_response_code(404);
 			$this->showError('No existe el template: '.$template_file);
 		}
 	}//fun set_template
@@ -47,9 +50,14 @@ class Template extends App{
 	
 	
 	function set_ini_vars($nombre = ''){
+		static $a_ini = array();
+		
 		$ini_file = $this->my_file_exist($nombre.'.ini');
 		if($ini_file != ''){
-			$this->set_vars(parse_ini_file($ini_file));
+			if(!isset($a_ini[$ini_file])){
+				$a_ini[$ini_file] = parse_ini_file($ini_file);
+			}//if
+			$this->set_vars($a_ini[$ini_file]);
 		}//if
 		
 		$php_file = $this->my_file_exist($nombre.'.php');
@@ -85,31 +93,33 @@ class Template extends App{
 			$this->set_vars($vars);
 		}//if
 		
-		if(!($this->fd = @fopen($this->tpl_file, 'r'))){
-			$this->showError('Error al abrir la plantilla: '.$this->tpl_file);
-		}else{
-			$this->template_file = fread($this->fd, filesize($this->tpl_file));
-			fclose($this->fd);
-			$this->mihtml = $this->template_file;
-			$this->mihtml = str_replace ("'", "\'", $this->mihtml);
-			$this->mihtml = preg_replace('#\{([a-z0-9\-_]*?)\}#is', "' . $\\1 . '", $this->mihtml);
-			if(isset($this->vars)){
-				reset($this->vars);
-				foreach($this->vars as $key=>$val){
-					$$key = $val;
-				}//while
+		static $a_plantillas = array();
+		
+		if(!isset($a_plantillas[$this->tpl_file])){
+			$s_plantilla = @file_get_contents($this->tpl_file);
+			if($s_plantilla === false){
+				error_log('CFW: error al abrir la plantilla: '.$this->tpl_file);
+				$this->showError('Error al abrir la plantilla.');
 			}//if
-			
-			@eval("\$this->mihtml = '$this->mihtml';");
-			if(isset($this->vars)){
-				reset($this->vars);
-				foreach($this->vars as $key=>$val){
-					unset($$key);
-				}//while
+			$a_plantillas[$this->tpl_file] = $s_plantilla;
+		}//if
+		
+		$a_vars = isset($this->vars) ? $this->vars : array();
+		
+		//Una sola pasada: los valores no se vuelven a expandir.
+		$this->mihtml = preg_replace_callback('#\{([a-z0-9\-_]+)\}#i', function($a_match) use ($a_vars){
+			$key = $a_match[1];
+			if(isset($a_vars[$key])){
+				return is_scalar($a_vars[$key]) ? (string)$a_vars[$key] : "";
 			}//if
-			$this->mihtml = str_replace ("\'", "'", $this->mihtml);
-			return $this->mihtml;
-		}
+			//Se lee de $_SESSION porque la copia de este objeto puede estar anticuada.
+			if($key === "csrf" && isset($_SESSION["csrf"])){
+				return $_SESSION["csrf"];
+			}//if
+			return "";
+		}, $a_plantillas[$this->tpl_file]);
+		
+		return $this->mihtml;
 	}//fun get
 	
 	

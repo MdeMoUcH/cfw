@@ -5,9 +5,7 @@
 	
 	<meta http-equiv="Content-Type" content="text/html; charset={charset}" />
 	
-	<link rel="icon" type="image/png" href="{urlbase}/images/favicon2.png" />
-	
-	<link rel="stylesheet" type="text/css" href="{urlbase}/css/style.css" >
+	<link rel="stylesheet" type="text/css" href="{urlbase}css/style.css" >
 	<style type="text/css">
 		{css}
 	</style>

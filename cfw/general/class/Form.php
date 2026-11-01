@@ -1,4 +1,4 @@
-<?
+<?php
 /***************
  * 
  * CFW - Framework MVC en PHP
@@ -42,6 +42,12 @@ class Form //extends App
 		$tpl = new Template("html/method");
 		$tpl->vars["method"] = $method;
 		$this->vars["method"] = $tpl->get();
+		
+		//En GET no se añade: el token acabaría en la URL.
+		$this->vars["csrf_input"] = "";
+		if(strtoupper($method) == "POST" && isset($_SESSION["csrf"])){
+			$this->vars["csrf_input"] = $this->getInput("csrf","hidden",$_SESSION["csrf"]);
+		}
 	}
 	
 	function activeEnctype(){
@@ -62,11 +68,11 @@ class Form //extends App
 	function getInput($name = "", $type = "", $value = "", $onclick = "", $class = "", $checked = false, $text = ""){
 		$tpl = new Template("html/input");
 		
-		$tpl->vars["name"] = $name;
-		$tpl->vars["type"] = $type;
+		$tpl->vars["name"] = escapar($name);
+		$tpl->vars["type"] = escapar($type);
 		$tpl->vars["text"] = $text;
 		if($type != "password"){
-			$tpl->vars["value"] = $value;
+			$tpl->vars["value"] = escapar($value);
 		}
 		$tpl->vars["onclick"] = "";
 		if($onclick != ""){
@@ -91,8 +97,8 @@ class Form //extends App
 	
 	function getTextarea($name = "", $value = "", $onclick = "", $rows = "", $cols = "", $class = "", $text = ""){
 		$tpl = new Template("html/textarea");
-		$tpl->vars["name"] = $name;
-		$tpl->vars["value"] = $value;
+		$tpl->vars["name"] = escapar($name);
+		$tpl->vars["value"] = escapar($value);
 		$tpl->vars["text"] = $text;
 		if($rows != ""){
 			$tpl->vars["rows"] = $rows;
@@ -107,8 +113,8 @@ class Form //extends App
 		$tpl->vars["onclick"] = "";
 		if($onclick != ""){
 			$tplclick = new Template("html/onclick");
-			$tplclick->vars["onclick"] = $tplclick->get();
-			$tpl->vars["onclick"] = $onclick;
+			$tplclick->vars["onclick"] = $onclick;
+			$tpl->vars["onclick"] = $tplclick->get();
 		}
 		$tpl->vars["class"] = "";
 		if($class != ""){
@@ -122,6 +128,9 @@ class Form //extends App
 	
 	
 	function getRow($title = "", $name = "", $type = "", $value = "", $onclick = "", $row_type = "", $class = "", $opciones = array(), $checked = false, $tabla = ""){
+		if(!is_array($opciones)){
+			$opciones = array();
+		}
 		switch($type){
 			case "cabecera":
 					$tpl = new Template("html/form_cabecera");
@@ -148,7 +157,7 @@ class Form //extends App
 			case "checkbox_single":
 					$tpl = new Template("html/form_row");
 					//if($value == 1){$checked = true;}
-					$tpl->vars["input"] = $this->getInput($name,"checkbox",$value,$onclick,$class,$checked,"&nbsp;".$title);
+					$tpl->vars["input"] = $this->getInput($name,"checkbox",$value,$onclick,$class,$checked,"&nbsp;".escapar($title));
 					return $tpl->get();
 				break;
 			case "checkbox_dinamico":
@@ -209,7 +218,7 @@ class Form //extends App
 						/* !!! */
 						
 						
-						$tpl->vars["input"] .= $this->getInput($name_aux,$type,$valueo,$onclick,$class,$checked,"&nbsp;".$option)."<br/>";
+						$tpl->vars["input"] .= $this->getInput($name_aux,$type,$valueo,$onclick,$class,$checked,"&nbsp;".escapar($option))."<br/>";
 					}
 					
 					return $tpl->get();
@@ -244,8 +253,8 @@ class Form //extends App
 					
 					foreach($opciones as $valueo=>$text){
 						$tpl_aux = new Template("html/option");
-						$tpl_aux->vars["name"] = $text;
-						$tpl_aux->vars["value"] = $valueo;
+						$tpl_aux->vars["name"] = escapar($text);
+						$tpl_aux->vars["value"] = escapar($valueo);
 						if($value == $valueo){
 							$tpl_aux_2 = new Template("html/selected");
 							$tpl_aux->vars["selected"] = $tpl_aux_2->get();
@@ -299,7 +308,7 @@ class Form //extends App
 			$s_content .= $this->getRow($row["title"],@$row["name"],@$row["type"],@$row["value"],@$row["onclick"],"",@$row["class"],@$row["opciones"],@$row["checked"],@$row["tabla"]);
 		}
 		
-		if(count($a_buttons) < 1 || $a_buttons == ""){
+		if(!is_array($a_buttons) || count($a_buttons) < 1){
 			$a_buttons = $this->a_default_buttons;
 		}
 		

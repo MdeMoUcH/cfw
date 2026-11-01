@@ -38,7 +38,13 @@ class DinamicOrm extends Orm
 	}
 	
 	function insert($a_array, $tabla = ""){
-		$s_sql = "SELECT * FROM ".$this->tabla." WHERE id = '".$a_array["id"]."'";
+		if(!isset($a_array["id"]) || $a_array["id"] === ""){
+			return parent::insert($a_array);
+		}
+		if(($id = $this->filtroId($a_array["id"])) === false){
+			return false;
+		}
+		$s_sql = "SELECT * FROM ".$this->tabla." WHERE id = '".$id."'";
 		
 		if($this->ejecutarConsulta($s_sql)){
 			$this->errores[] = "Hubo algún error.";

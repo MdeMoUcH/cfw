@@ -14,7 +14,16 @@
 <script type="text/javascript">
 function borrar(s_url){
 	if(confirm("Está seguro de querer borrar el elemento seleccionado?")){
-		window.location = s_url;
+		var form = document.createElement("form");
+		form.method = "post";
+		form.action = s_url;
+		var input = document.createElement("input");
+		input.type = "hidden";
+		input.name = "csrf";
+		input.value = "{csrf}";
+		form.appendChild(input);
+		document.body.appendChild(form);
+		form.submit();
 	}
 }
 </script>

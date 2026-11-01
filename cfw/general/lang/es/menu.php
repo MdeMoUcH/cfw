@@ -1,4 +1,4 @@
-<?
+<?php
 function get_array_text(){
 	$a_text = array();
 	

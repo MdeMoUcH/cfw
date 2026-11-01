@@ -15,4 +15,6 @@ CREATE TABLE `usuarios` (
 ) ENGINE=MyISAM AUTO_INCREMENT=0 DEFAULT CHARSET=utf8;
 
 
-INSERT INTO `usuarios` (id,fk_tipo_usuario,email,pass) VALUES (1,1,'m@m.es','912ec803b2ce49e4a541068d495ab570');
+/* Primer administrador: cambia el email y la contraseña antes de ejecutarlo.
+INSERT INTO `usuarios` (id,fk_tipo_usuario,email,pass,activo) VALUES (1,1,'admin@example.com',MD5('CAMBIA_ESTA_CONTRASENA'),1);
+*/

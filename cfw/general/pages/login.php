@@ -1,4 +1,4 @@
-<?
+<?php
 /***************
  * 
  * CFW - Framework MVC en PHP
@@ -12,8 +12,11 @@
 
 class login extends Page{	
 	
+	//No se recibe por parámetro: init es accesible por URL.
+	protected $s_mensaje_interno = "";
 	
-	function init($s_mensaje = ""){
+	
+	function init(){
 		$this->add_include("js",$this->config["urlbase"]."js/jquery-1.7.1.min.js");
 		$this->add_include("js",$this->config["urlbase"]."js/md5.js");
 		$this->add_include("js",$this->config["urlbase"]."js/main.js");
@@ -33,20 +36,32 @@ class login extends Page{
 			$s_msg = $tplmsg->get();
 		}
 		
-		if(@$_POST["nick"] != "" && @$_POST["pass"] != ""){
+		$s_nick = is_string(@$_POST["nick"]) ? $_POST["nick"] : "";
+		$s_pass = is_string(@$_POST["pass"]) ? $_POST["pass"] : "";
+		
+		if($s_nick != "" && $s_pass != ""){
+			$tplmsg->vars["color"] = "Red";
+			$tplmsg->vars["text"] = "El usuario o la contraseña no son correctos.";
 			
 			$user = new Usuarios();
+			//La clave del contador es el email guardado: MySQL iguala variantes que el texto enviado no.
+			$s_clave = $user->getUserByEmail($s_nick) ? $user->resultado[0]["email"] : $s_nick;
 			
-			if($user->comprobarUserPass($_POST["nick"],$_POST["pass"])){
-				$this->session->setUserLogged($user->resultado[0]["email"],$user->resultado[0]["id"],$user->resultado[0]["fk_tipo_usuario"],$user->resultado[0]["fk_idioma"]);
-				$user->setLastVisit($user->resultado[0]["id"]);
-				
-				$b_logueado = true;
-				$tplmsg->vars["color"] = "Green";
-				$tplmsg->vars["text"] = "Te has logueado con éxito.";
-			}else{
-				$tplmsg->vars["color"] = "Red";
-				$tplmsg->vars["text"] = "El usuario o la contraseña no son correctos.";	
+			if(!intentos_bloqueado($s_clave)){
+				if($user->comprobarUserPass($s_nick,$s_pass)){
+					intentos_limpiar($s_clave);
+					$this->session->setUserLogged($user->resultado[0]["email"],$user->resultado[0]["id"],$user->resultado[0]["fk_tipo_usuario"],$user->resultado[0]["fk_idioma"]);
+					$user->setLastVisit($user->resultado[0]["id"]);
+					
+					$b_logueado = true;
+					$tplmsg->vars["color"] = "Green";
+					$tplmsg->vars["text"] = "Te has logueado con éxito.";
+				}elseif(count($user->errores) >= 1){
+					//Un fallo de la BD no cuenta como intento.
+					$tplmsg->vars["text"] = "Hubo algún problema, vuelvaló a intentar más tarde.";
+				}else{
+					intentos_fallo($s_clave);
+				}
 			}
 			$user->cerrar();
 			$s_msg = $tplmsg->get();
@@ -84,8 +99,8 @@ class login extends Page{
 			
 			$form->setMethod("POST");
 			
-			if(@$_POST["nick"] != ""){
-				$campos_form["nick"]["value"] = $_POST["nick"];
+			if($s_nick != ""){
+				$campos_form["nick"]["value"] = $s_nick;
 			}
 			
 			
@@ -96,26 +111,30 @@ class login extends Page{
 			$tpl->vars["content"] = $s_msg;
 		}
 		
-		if($s_mensaje != ""){
-			$tpl->vars["mensaje"] = $s_mensaje;
+		if($this->s_mensaje_interno != ""){
+			$tpl->vars["mensaje"] = $this->s_mensaje_interno;
 		}
 		
 		$this->show($tpl);
 	}
 	
 	function logout(){
-		$tplmsg = new Template("html/p_color");
-		
-		if($this->session->isUserLogged()){
-			$this->session->setUserOut();
-			$tplmsg->vars["color"] = "Blue";
-			$tplmsg->vars["text"] = "Has salido de tu cuenta.";	
-		}else{
-			$tplmsg->vars["color"] = "Red";
-			$tplmsg->vars["text"] = "No estás logueado.";	
+		if(@$_SERVER["REQUEST_METHOD"] === "POST"){
+			$tplmsg = new Template("html/p_color");
+			
+			if($this->session->isUserLogged()){
+				$this->session->setUserOut();
+				$tplmsg->vars["color"] = "Blue";
+				$tplmsg->vars["text"] = "Has salido de tu cuenta.";	
+			}else{
+				$tplmsg->vars["color"] = "Red";
+				$tplmsg->vars["text"] = "No estás logueado.";	
+			}
+			
+			$this->s_mensaje_interno = $tplmsg->get();
 		}
 		
-		$this->init($tplmsg->get());
+		$this->init();
 	}
 	
 }//class

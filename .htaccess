@@ -2,14 +2,15 @@ RewriteEngine On
 IndexIgnore *
 Options -Indexes
 
+RewriteRule (^|/)\.(?!well-known/) - [F,L]
+RewriteRule ^cfw(/|$) - [F,NC,L]
+RewriteRule \.(ini|sql|tpl|md)$ - [F,NC,L]
+
 
 ErrorDocument  404  /404/
 RewriteRule ^404/$ /index.php?uno=errorpage
 
-RewriteRule .*\.(ini)$ http://localhost/ [R,NC,L]
-
-RewriteRule ^cfw$ http://localhost/ [R,NC,L]
-RewriteRule ^uploads/* http://localhost/ [R,NC,L]
+RewriteRule ^uploads(/|$) / [R,NC,L]
 
 <Files .htaccess>
 order allow,deny
@@ -30,10 +31,6 @@ RewriteRule ^admin /index.php
 
 RewriteRule ^login/logout/ /index.php?uno=login&dos=logout
 RewriteRule ^login/logout /index.php?uno=login&dos=logout
-RewriteRule ^login/register/ /index.php?uno=login&dos=register
-RewriteRule ^login/register /index.php?uno=login&dos=register
-RewriteRule ^login/restorepassword/ /index.php?uno=login&dos=restorepassword
-RewriteRule ^login/restorepassword /index.php?uno=login&dos=restorepassword
 RewriteRule ^login/ /index.php?uno=login
 RewriteRule ^login /index.php?uno=login
 

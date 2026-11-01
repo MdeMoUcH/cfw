@@ -5,5 +5,5 @@
 	<p>{content}</p>
 	<br/>
 	<hr/>
-	<a href="{urlbase}login/logout">salir</a>
+	<form method="post" action="{urlbase}login/logout" style="display:inline;"><input type="hidden" name="csrf" value="{csrf}" /><input type="submit" value="salir" /></form>
 </div>

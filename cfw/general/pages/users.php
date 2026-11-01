@@ -1,4 +1,4 @@
-<?
+<?php
 /***************
  * 
  * CFW - Framework MVC en PHP
@@ -17,9 +17,7 @@ class users extends Page{
 	
 	
 	function init(){
-		if(!$this->session->isUserAdmin()){
-			header("Location: ".$this->config["urlbase"]."admin/login");
-		}
+		$this->exigirAdmin();
 		$this->vars["menu"] = $this->get_menu($this->slug);
 		
 		$tpl = new Template($this->template);
@@ -33,14 +31,13 @@ class users extends Page{
 			$tpl->vars["content"] = "";
 			foreach($users as $user){
 				//meter en template ¿o qué? majo...
-				$tpl->vars["content"] .= "<p><b><a href='".$this->config["urlbase"]."admin/users/id/".$user["id"]."'>".$user["email"]."</a></b>";
+				$tpl->vars["content"] .= "<p><b><a href='".$this->config["urlbase"]."admin/users/id/".$user["id"]."'>".escapar($user["email"])."</a></b>";
 				if($this->session->isUserAdmin()){
 					$tpl->vars["content"] .= "&nbsp;-&nbsp;<a href='".$this->config["urlbase"]."admin/users/edit/".$user["id"]."'>Editar</a>";
 				}
 				$tpl->vars["content"] .= "</p>";
 			}
 		}else{
-			$tpl->vars["content"] = $this->title;
 			$tpl->vars["content"] = "No hay ningún ".$this->slug.".";
 		}
 		$orm->cerrar();
@@ -50,9 +47,7 @@ class users extends Page{
 	
 	
 	function id($id = ""){
-		if(!$this->session->isUserAdmin()){
-			header("Location: ".$this->config["urlbase"]."admin/login");
-		}
+		$this->exigirAdmin();
 		$this->vars["menu"] = $this->get_menu($this->slug);
 		
 		$tpl = new Template($this->template);
@@ -60,11 +55,11 @@ class users extends Page{
 		$tpl->vars["titulo"] = $this->titulo;
 		
 		$orm = new $this->class();
-		if($id != ""){
-			$user = @$orm->getById($id);
-			$tpl->vars["titulo"] = $user["email"];
+		$user = ($id != "") ? $orm->getById($id) : false;
+		if($user){
+			$tpl->vars["titulo"] = escapar($user["email"]);
 			//$tpl->vars["content"] = "<p>".nl2br($user["descripcion"])."</p>";
-			$tpl->vars["content"] = "<p>".$user["email"]."</p>";
+			$tpl->vars["content"] = "<p>".escapar($user["email"])."</p>";
 			if($this->session->isUserAdmin()){
 				$tpl->vars["content"] .= "<p><a href='".$this->config["urlbase"]."admin/users/edit/".$user["id"]."'>Editar</a></p>";
 			}			
@@ -80,9 +75,7 @@ class users extends Page{
 	
 		
 	function form($save = "", $id = "",$s_msg = ""){
-		if(!$this->session->isUserAdmin()){
-			header("Location: ".$this->config["urlbase"]."admin/login");
-		}
+		$this->exigirAdmin();
 		
 		$b_insert_error = false;
 		
@@ -90,18 +83,23 @@ class users extends Page{
 		
 		$tplmsg = new Template("html/p_color");
 		
-		if($save != "" && $_POST["pass"] == $_POST["pass_confirm"]){
-			if($_POST["pass"] != ""){
-				$_POST["pass"] = md5($_POST["pass"]);
+		$a_datos = $this->datosFormulario();
+		$s_pass = isset($a_datos["pass"]) ? $a_datos["pass"] : "";
+		$s_pass_confirm = is_string(@$_POST["pass_confirm"]) ? $_POST["pass_confirm"] : "";
+		$b_guardar = $save != "" && @$_SERVER["REQUEST_METHOD"] === "POST";
+		
+		if($b_guardar && $s_pass === $s_pass_confirm){
+			if($s_pass != ""){
+				$a_datos["pass"] = md5($s_pass);
 			}
 			
-			if($_POST["email"] == "" || $_POST["pass"] == ""){
+			if($s_pass == "" || !email_valido(@$a_datos["email"])){
 				$b_insert_error = true;
 				$tplmsg->vars["color"] = "Red";
-				$tplmsg->vars["text"] = "El email y la contraseña no pueden estar vacíos";
+				$tplmsg->vars["text"] = "El email tiene que ser correcto y la contraseña no puede estar vacía";
 				
 				$s_msg = $tplmsg->get();
-			}elseif($orm->insert($_POST)){
+			}elseif($orm->insert($a_datos)){
 				$tplmsg->vars["color"] = "Green";
 				$tplmsg->vars["text"] = "OK - usuario insertado";
 				
@@ -129,7 +127,7 @@ class users extends Page{
 					$s_msg .= $tplmsg->get();
 				}
 			}
-		}elseif($save != ""){
+		}elseif($b_guardar){
 			$b_insert_error = true;
 			$tplmsg->vars["color"] = "Red";
 			$tplmsg->vars["text"] = "Las contraseñas no son iguales";
@@ -174,17 +172,30 @@ class users extends Page{
 	
 	
 	function edit($id, $save = ""){
-		if(!$this->session->isUserAdmin()){
-			header("Location: ".$this->config["urlbase"]."admin/login");
-		}
+		$this->exigirAdmin();
 		$s_msg = "";
-		if($save != ""){
+		if($save != "" && @$_SERVER["REQUEST_METHOD"] === "POST"){
 			$orm = new $this->class();
 			$tplmsg = new Template("html/p_color");
-			if($_POST["pass"] != "" && $_POST["pass"] == $_POST["pass_confirm"]){
-				$_POST["pass"] = md5($_POST["pass"]);
+			$a_datos = $this->datosFormulario();
+			$s_pass = isset($a_datos["pass"]) ? $a_datos["pass"] : "";
+			$s_pass_confirm = is_string(@$_POST["pass_confirm"]) ? $_POST["pass_confirm"] : "";
+			unset($a_datos["pass"]);
+			if($s_pass != ""){
+				$a_datos["pass"] = md5($s_pass);
 			}
-			if($orm->update($_POST)){
+			
+			$tplmsg->vars["color"] = "Red";
+			if($s_pass !== $s_pass_confirm){
+				$tplmsg->vars["text"] = "Las contraseñas no son iguales";
+				$s_msg = $tplmsg->get();
+			}elseif(!email_valido(@$a_datos["email"])){
+				$tplmsg->vars["text"] = "El email no es correcto";
+				$s_msg = $tplmsg->get();
+			}elseif($this->seQuedariaSinAcceso($id,$a_datos)){
+				$tplmsg->vars["text"] = "No puedes desactivarte, borrarte ni quitarte el rol de administrador a ti mismo";
+				$s_msg = $tplmsg->get();
+			}elseif($orm->update($a_datos,$id)){
 				$tplmsg->vars["color"] = "Green";
 				$tplmsg->vars["text"] = "Usuario actualizado con éxito.";
 					
@@ -204,6 +215,32 @@ class users extends Page{
 			}
 		}
 		$this->form("",$id,$s_msg);
+	}
+	
+	
+	//Solo los campos que el formulario puede cambiar; los radios llegan como array.
+	protected function datosFormulario(){
+		$a_datos = array();
+		foreach(array("email","pass","fk_idioma","activo","fk_tipo_usuario","borrado") as $s_campo){
+			$valor = @$_POST[$s_campo];
+			if(is_array($valor)){
+				$valor = @$valor[0];
+			}
+			if(is_string($valor)){
+				$a_datos[$s_campo] = $valor;
+			}
+		}
+		return $a_datos;
+	}
+	
+	
+	protected function seQuedariaSinAcceso($id,$a_datos){
+		if((int)$id !== (int)$this->session->data["id_usuario"]){
+			return false;
+		}
+		return (isset($a_datos["activo"]) && $a_datos["activo"] !== "1")
+			|| (isset($a_datos["borrado"]) && $a_datos["borrado"] !== "0")
+			|| (isset($a_datos["fk_tipo_usuario"]) && $a_datos["fk_tipo_usuario"] !== "1");
 	}
 	
 	
