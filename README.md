@@ -15,17 +15,16 @@ Framework PHP
 ## Idiomas
 Los textos están en `cfw/general/lang/<código>/` (`textos.ini` y un `.ini` por plantilla). Los de `cfw/specific/lang/<código>/` tienen prioridad, clave a clave.
 
-La opción de multiidioma se gestiona en `/admin/idiomas` y se guarda en `cfw/general/lang/idiomas.ini`, que no se versiona. Con ella activa, cada usuario elige su idioma en `cuenta` y los visitantes anónimos reciben el de `Accept-Language`, entre los activos. Si no, todo sale en `lang_default`, que siempre está activo.
+La opción de multiidioma se gestiona en `/admin/idiomas` y se guarda en `cfw/datos/idiomas.ini`, que no se versiona. Con ella activa, cada usuario elige su idioma en `cuenta` y los visitantes anónimos reciben el de `Accept-Language`, entre los activos. Si no, todo sale en `lang_default`, que siempre está activo.
 
-Antes de usarla, crea el fichero y deja la carpeta sin escritura para Apache:
+Antes de usarla, da a Apache permiso sobre la carpeta. La aplicación crea el fichero la primera vez que guardas:
 ```
-install -o <deploy> -g www-data -m 660 /dev/null cfw/general/lang/idiomas.ini
-chmod 755 cfw/general/lang
+chgrp www-data cfw/datos && chmod 770 cfw/datos
 ```
+- Repite esta orden tras un clon nuevo, porque git no conserva el grupo ni el modo. `chgrp` puede requerir privilegios.
 - Apache no debe ser propietario de `cfw/general/lang/` ni tener escritura sobre ella, tampoco de grupo o recursiva. Los textos se pintan sin escapar: quien pueda escribir ahí puede inyectar código en todo el sitio, incluida la administración.
-- Conserva el fichero entre despliegues. Un `rsync --delete` o un `git clean -X` lo borran y el multiidioma se desactiva sin avisar.
-- La escritura no es atómica: un fallo a mitad deja el multiidioma desactivado hasta volver a guardar.
-- Con varios servidores, el fichero no se comparte entre ellos.
+- Conserva el fichero entre despliegues. Un `rsync --delete` o un `git clean -X` lo borran: el multiidioma se desactiva y `/admin/idiomas` muestra un aviso.
+- La opción está pensada para un solo servidor: con varios, el fichero no se comparte entre ellos.
 
 Para añadir un idioma, crea `cfw/general/lang/<código>/textos.ini`, con un código de dos letras minúsculas y `nombre_idioma`; las claves que falten salen en `lang_default`. Los valores van entre comillas dobles y no pueden contener comillas dobles. Si el valor lleva HTML o datos, escápalos antes de pasarlos a `t()`.
 

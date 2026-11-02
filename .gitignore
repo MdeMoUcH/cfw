@@ -1,3 +1,4 @@
 .magents/
 .claude/
-cfw/general/lang/idiomas.ini
+cfw/datos/*
+!cfw/datos/.htaccess

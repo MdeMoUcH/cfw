@@ -29,7 +29,7 @@ class GestorIdiomas
 
 	private static function rutaOpciones()
 	{
-		return self::rutaBase()."general/lang/idiomas.ini";
+		return self::rutaBase()."datos/idiomas.ini";
 	}//fun rutaOpciones
 
 
@@ -164,16 +164,7 @@ class GestorIdiomas
 			return self::$a_opciones;
 		}//if
 
-		$s_contenido = false;
-		$fd = @fopen($s_fichero, "r");
-		if($fd)
-		{
-			flock($fd, LOCK_SH);
-			$s_contenido = stream_get_contents($fd);
-			flock($fd, LOCK_UN);
-			fclose($fd);
-		}//if
-
+		$s_contenido = @file_get_contents($s_fichero);
 		$a_datos = ($s_contenido === false) ? false : @parse_ini_string($s_contenido, false, INI_SCANNER_RAW);
 
 		if(!is_array($a_datos)
@@ -365,7 +356,17 @@ class GestorIdiomas
 	}//fun textos
 
 
-	//Escribe en sitio: Apache solo necesita permiso sobre el fichero, no sobre la carpeta lang.
+	//Falso si falta el fichero de opciones o no se puede escribir en su carpeta.
+	static function opcionesPreparadas()
+	{
+		$s_fichero = self::rutaOpciones();
+
+		clearstatcache();
+		return is_file($s_fichero) && is_readable($s_fichero) && is_writable(dirname($s_fichero));
+	}//fun opcionesPreparadas
+
+
+	//Reemplazo atómico con temporal y rename: Apache solo necesita permiso sobre la carpeta datos.
 	static function guardar($b_activo, $a_codigos)
 	{
 		$a_disponibles = self::disponibles();
@@ -381,32 +382,56 @@ class GestorIdiomas
 		$s_contenido = 'multiidioma = "'.($b_activo ? "1" : "0").'"'."\n".'idiomas = "'.implode(",", $a_idiomas).'"'."\n";
 		$s_fichero = self::rutaOpciones();
 
-		clearstatcache();
-		$b_permiso = is_file($s_fichero) ? is_writable($s_fichero) : is_writable(dirname($s_fichero));
-		$fd = $b_permiso ? @fopen($s_fichero, "c") : false;
-
-		if(!$fd || !flock($fd, LOCK_EX))
+		if(!self::escribirAtomico($s_fichero, $s_contenido))
 		{
 			error_log("CFW: no se pudo escribir ".$s_fichero);
 			return false;
 		}//if
 
-		ftruncate($fd, 0);
-		rewind($fd);
-		$b_ok = fwrite($fd, $s_contenido) === strlen($s_contenido);
-		fflush($fd);
-		flock($fd, LOCK_UN);
-		fclose($fd);
-
 		self::$a_opciones = null;
 		self::$a_textos = array();
 		self::$a_navegador = array();
 
+		return true;
+	}//fun guardar
+
+
+	private static function escribirAtomico($s_fichero, $s_contenido)
+	{
+		$s_carpeta = dirname($s_fichero);
+
+		clearstatcache();
+		if(!is_dir($s_carpeta) || !is_writable($s_carpeta))
+		{
+			return false;
+		}//if
+
+		$s_tmp = @tempnam($s_carpeta, "idiomas_");
+		if($s_tmp === false)
+		{
+			return false;
+		}//if
+
+		//tempnam cae al temporal del sistema si no puede usar la carpeta.
+		$b_ok = dirname($s_tmp) === realpath($s_carpeta);
+		if($b_ok)
+		{
+			$fd = @fopen($s_tmp, "w");
+			$b_ok = $fd && fwrite($fd, $s_contenido) === strlen($s_contenido) && fflush($fd) && fsync($fd);
+			if($fd)
+			{
+				fclose($fd);
+			}//if
+
+			//tempnam crea con 0600 y rename lo conserva.
+			$b_ok = $b_ok && @chmod($s_tmp, 0640) && @rename($s_tmp, $s_fichero);
+		}//if
+
 		if(!$b_ok)
 		{
-			error_log("CFW: no se pudo escribir ".$s_fichero);
+			@unlink($s_tmp);
 		}//if
 
 		return $b_ok;
-	}//fun guardar
+	}//fun escribirAtomico
 }//class

@@ -54,9 +54,17 @@ class idiomas extends Page{
 		$s_nombre_default = isset($a_disponibles[$s_default]) ? $a_disponibles[$s_default] : $s_default;
 		$tplnota->vars["text"] = t("text_idiomas_default",array("idioma" => escapar($s_nombre_default)));
 		
+		$s_aviso = "";
+		if(!GestorIdiomas::opcionesPreparadas()){
+			$tplaviso = new Template("html/p_color");
+			$tplaviso->vars["color"] = "Red";
+			$tplaviso->vars["text"] = t("text_idiomas_aviso_datos");
+			$s_aviso = $tplaviso->get();
+		}
+
 		$tpl = new Template("usuarios");
 		$tpl->vars["titulo"] = t("text_idiomas_titulo");
-		$tpl->vars["content"] = $this->leerFlash().$tplnota->get().$form->getForm();
+		$tpl->vars["content"] = $this->leerFlash().$s_aviso.$tplnota->get().$form->getForm();
 		
 		$this->show($tpl);
 	}
