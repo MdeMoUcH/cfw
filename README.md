@@ -1,6 +1,52 @@
 # cfw
 Framework PHP
 
+## Qué es
+CFW es un framework MVC en PHP que da una base con opciones básicas: portada, login, cuenta, gestión de usuarios e idiomas. Cada proyecto se construye encima sin modificar esa base.
+
+- **`cfw/general/`** es el funcionamiento base de CFW.
+- **`cfw/specific/`** es la parte de cada proyecto. En este repositorio solo está su estructura, y lo que pongas ahí tiene prioridad sobre `general`.
+
+Las piezas MVC son:
+- **Controlador:** las clases de `pages/`, que heredan de `Page`.
+- **Modelo:** las clases de `orm/`, que heredan de `Orm`.
+- **Vista:** las plantillas `.tpl` de `templates/`, con `Template`.
+
+## Enrutamiento
+Una petición se traduce en clase, método y hasta dos argumentos:
+
+```
+/admin/clase/metodo/arg1/arg2  ->  index.php?uno=clase&dos=metodo&tres=arg1&cuatro=arg2
+```
+
+1. `index.php` busca `cfw/specific/pages/<clase>.php` y, si no existe, `cfw/general/pages/<clase>.php`. Si no se indica clase, usa `class.default` de `config.ini`.
+2. El fichero debe definir una clase con el mismo nombre, en minúsculas, números y `_`, que herede de `Page`.
+3. Sin método se ejecuta `init()`. Con método, se ejecuta `$page->metodo($arg1, $arg2)`.
+4. Si algo falla, responde 404 con `ErrorCFW`. Los detalles solo se muestran con `desarrollo = true`.
+
+Solo son accesibles por URL los métodos públicos declarados en la página. Los de `App` y `Page`, los estáticos y los que empiezan por `__` no lo son. Los POST exigen un token CSRF válido.
+
+El `.htaccess` raíz solo define las rutas `/admin/...` y `/login`. Otra URL pública, como `/contacto`, necesita su propia regla en ese fichero o usar `index.php?uno=contacto`.
+
+## Qué se puede redefinir en `specific`
+
+| Carpeta | Efecto |
+|---|---|
+| `pages/` | Sustituye a la página de `general` con el mismo nombre, o añade una nueva. |
+| `class/` | Sustituye a la clase de `general` con el mismo nombre. |
+| `orm/` | Sustituye a `Usuarios` o `DinamicOrm`. |
+| `templates/` | Sustituye a la plantilla con la misma ruta. |
+| `lang/<código>/` | Se fusiona clave a clave con los textos de `general`, con prioridad sobre ellos dentro del mismo idioma. |
+| `utils/functions.php` | Se carga además del de `general`. |
+
+Límites:
+- La sustitución es del fichero entero. Una clase no puede heredar de la de `general` con su mismo nombre, así que hay que copiarla o crear otra con nombre distinto.
+- No hay carga automática. `cfw/includes.php` solo carga una lista fija de clases y ORM. Las nuevas se incluyen con `require_once` desde la página que las use.
+- Una función de `specific/utils/functions.php` no puede llamarse igual que una de `general`: PHP da un error fatal.
+
+## Qué queda fuera de `specific`
+Cada proyecto también adapta estos ficheros, que no están en `specific`: `cfw/config.ini`, el `.htaccess` raíz, `db.sql`, `css/`, `js/` e `img/`. Al actualizar CFW en un proyecto hay que revisarlos a mano. `cfw/datos/` guarda lo que escribe la aplicación. Su contenido no se versiona, salvo su `.htaccess`.
+
 ## Requisitos
 - PHP 8.2 o superior (probado en 8.2, 8.3, 8.4 y 8.5), Apache con `mod_rewrite` y `.htaccess` activo, MySQL 5.7 y la extensión `mysqli`.
 - La extensión GD (con JPEG y PNG) solo hace falta para subir imágenes. Sin ella, `saveImage` devuelve `false`.
