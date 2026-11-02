@@ -94,7 +94,7 @@ if(count($errores) < 1)
 		require_once($app->config["pathbase"]."cfw/general/pages/".$class.".php");
 	}//elseif
 
-	if(class_exists($class))
+	if(class_exists($class) && is_subclass_of($class,"Page"))
 	{
 		if($arg1 != "" && method_exists($class,$arg1))
 		{

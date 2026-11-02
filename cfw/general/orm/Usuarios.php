@@ -77,7 +77,12 @@ class Usuarios extends Orm
 	function insert($a_array, $tabla = ''){
 		$s_sql = "SELECT * FROM ".$this->tabla." WHERE email = '".$this->filtro(@$a_array["email"])."' AND borrado = 0 AND (pass IS NOT NULL AND pass <> '');";
 		
+		$i_errores = count($this->errores);
 		$this->ejecutarConsulta($s_sql);
+		//Sin poder comprobar el email no se escribe: la tabla no tiene UNIQUE.
+		if(count($this->errores) > $i_errores){
+			return false;
+		}
 		
 		if(isset($this->resultado[0]['email'])){
 			$tpl = new Template('main');
@@ -93,12 +98,15 @@ class Usuarios extends Orm
 		if(@$a_datos["email"] != ""){
 			$s_sql = "SELECT * FROM ".$this->tabla." WHERE email = '".$this->filtro($a_datos["email"])."' AND borrado = 0";
 			
+			$i_errores = count($this->errores);
 			if($this->ejecutarConsulta($s_sql)){
 				if($this->resultado[0]["id"] != $id_efectivo){
 					$tpl = new Template('main');
 					$this->errores[] = $tpl->vars['text_error_usuario_mail'];
 					return false;
 				}
+			}elseif(count($this->errores) > $i_errores){
+				return false;
 			}
 		}
 		
@@ -107,10 +115,13 @@ class Usuarios extends Orm
 	
 	
 	function setLastVisit($id,$timezone = ''){
-		parent::getById($id);
+		$a_fila = parent::getById($id);
 		$a_data = array();
 		$a_data["ultimo_acceso"] = date("Y-m-d H:i:s");
-		$a_data["visitas"] = @$this->resultado[0]['visitas']+1;
+		//Sin la fila no se conoce el contador: no se pisa.
+		if($a_fila){
+			$a_data["visitas"] = $a_fila["visitas"]+1;
+		}
 		$a_data["timezone"] = $timezone;
 		
 		return parent::update($a_data,$id);

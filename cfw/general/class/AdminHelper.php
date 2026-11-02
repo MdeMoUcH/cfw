@@ -212,6 +212,9 @@ class AdminHelper extends Page{
 		$orm->cerrar();
 		
 		foreach((array)$orm->campos_form as $campo){
+			if(!isset($campo["name"])){
+				continue;
+			}
 			if(@$campo["type"] == "select_dinamico" || @$campo["type"] == "select_dinamico_desactivado"){
 					$orm_aux = new DinamicOrm();
 					$orm_aux->setTabla($campo["tabla"]);
@@ -227,7 +230,9 @@ class AdminHelper extends Page{
 					//$orm->campos_form[$campo["name"]]["type"] = "select";
 					$orm->campos_form[$campo["name"]]["opciones"] = $a_opciones;
 			}elseif(@$campo["type"] == "checkbox_single"){
-				if(@$a_values[$campo["name"]] == @$orm->campos_form[$campo["name"]]["value"]){
+				$valor_actual = isset($a_values[$campo["name"]]) ? $a_values[$campo["name"]] : null;
+				$valor_campo = isset($orm->campos_form[$campo["name"]]["value"]) ? $orm->campos_form[$campo["name"]]["value"] : null;
+				if($valor_actual == $valor_campo){
 					$orm->campos_form[$campo["name"]]["checked"] = true;
 				}
 			}
@@ -388,7 +393,7 @@ class AdminHelper extends Page{
 	private function load_template_single(){
 		if(file_exists($this->config["pathbase"]."cfw/general/templates/".$this->slug.".tpl") || 
 			file_exists($this->config["pathbase"]."cfw/specific/templates/".$this->slug.".tpl")){
-			$tpl = new Template(@$this->template_single != "" ? $this->template_single : $this->slug);
+			$tpl = new Template($this->template_single != "" ? $this->template_single : $this->slug);
 		}else{
 			$tpl = new Template("element");
 		}	

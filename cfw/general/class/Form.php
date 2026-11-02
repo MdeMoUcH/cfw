@@ -133,6 +133,7 @@ class Form //extends App
 		if(!is_array($opciones)){
 			$opciones = array();
 		}
+		$a_checked = array();
 		switch($type){
 			case "cabecera":
 					$tpl = new Template("html/form_cabecera");
@@ -203,12 +204,13 @@ class Form //extends App
 							$option = @$valueo["nombre"];
 							$valueo = @$valueo["value"];
 						}else{
-							if($value == $valueo){
+							//null == 0 es true: sin valor no se marca ninguna opción.
+							if($value !== null && $value == $valueo){
 								$checked = true;
 							}else{
 								$checked = false;
 							}
-							if(@$a_checked[$valueo]){
+							if($valueo !== null && !empty($a_checked[$valueo])){
 								$checked = true;
 							}
 						}
@@ -257,7 +259,7 @@ class Form //extends App
 						$tpl_aux = new Template("html/option");
 						$tpl_aux->vars["name"] = escapar($text);
 						$tpl_aux->vars["value"] = escapar($valueo);
-						if($value == $valueo){
+						if($value !== null && $value == $valueo){
 							$tpl_aux_2 = new Template("html/selected");
 							$tpl_aux->vars["selected"] = $tpl_aux_2->get();
 						}
@@ -297,14 +299,17 @@ class Form //extends App
 		
 		$s_content = "";
 		foreach($a_rows as $row){
-			if(@$a_values[$row["name"]] != ""){
-				if(is_array($a_values[$row["name"]])){
-					$row["value"] = @$a_values[$row["name"]][0];
+			//En 8.5 una clave null da Deprecated también en isset: se normaliza antes de consultar.
+			$s_nombre = isset($row["name"]) ? $row["name"] : "";
+			$valor = isset($a_values[$s_nombre]) ? $a_values[$s_nombre] : "";
+			if($valor != ""){
+				if(is_array($valor)){
+					$row["value"] = isset($valor[0]) ? $valor[0] : null;
 				}else{
-					$row["value"] = $a_values[$row["name"]];
+					$row["value"] = $valor;
 				}
 			}
-			if(@$row["type"] == "checkbox_single" && @$a_values[$row["name"]] == 1){
+			if(@$row["type"] == "checkbox_single" && $valor == 1){
 				$row["checked"] = true;
 			}
 			$s_content .= $this->getRow(@$row["title"],@$row["name"],@$row["type"],@$row["value"],@$row["onclick"],"",@$row["class"],@$row["opciones"],@$row["checked"],@$row["tabla"]);

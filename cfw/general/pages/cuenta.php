@@ -25,7 +25,7 @@ class cuenta extends Page{
 		$ormuser = new Usuarios();
 		
 		$ormuser->getById($this->session->data["id_usuario"]);
-		$s_email_actual = (string)@$ormuser->resultado[0]["email"];
+		$s_email_actual = isset($ormuser->resultado[0]["email"]) ? (string)$ormuser->resultado[0]["email"] : "";
 		$tpl->vars["email"] = escapar($s_email_actual);
 		
 		
@@ -50,6 +50,9 @@ class cuenta extends Page{
 						}else{
 							$tplaux->vars["text"] = "Hubo algún problema, vuelvaló a intentar más tarde.";
 						}
+					}elseif(count($ormuser->errores) >= 1){
+						//Un fallo de la BD no significa que la contraseña sea incorrecta.
+						$tplaux->vars["text"] = "Hubo algún problema, vuelvaló a intentar más tarde.";
 					}else{
 						$tplaux->vars["text"] = "No se realizó ningún cambio, la contraseña actual no es correcta.";
 					}
