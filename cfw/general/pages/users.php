@@ -99,23 +99,17 @@ class users extends Page{
 				$tplmsg->vars["text"] = "El email tiene que ser correcto y la contraseña no puede estar vacía";
 				
 				$s_msg = $tplmsg->get();
+			}elseif($this->hayArchivoEnviado()){
+				$b_insert_error = true;
+				$tplmsg->vars["color"] = "Red";
+				$tplmsg->vars["text"] = "No se ha creado el usuario: este formulario no admite archivos.";
+				
+				$s_msg = $tplmsg->get();
 			}elseif($orm->insert($a_datos)){
 				$tplmsg->vars["color"] = "Green";
 				$tplmsg->vars["text"] = "OK - usuario insertado";
 				
 				$s_msg = $tplmsg->get();
-				
-				if(@$_FILES["avatar"]["error"] == 0){
-					$tplmsg->vars["color"] = "Red";
-					$tplmsg->vars["text"] = "WTF? No está hecho el guardado de imágenes.... -_-\"";
-					
-					//$s_msg .= $tplmsg->get();
-				}elseif($_FILES["avatar"]["error"] != 4){
-					$tplmsg->vars["color"] = "Red";
-					$tplmsg->vars["text"] = "Pero hubo error al subir la imágen";
-					
-					$s_msg .= $tplmsg->get();
-				}
 			}else{
 				$b_insert_error = true;
 				$tplmsg->vars["text"] = "";
@@ -231,6 +225,17 @@ class users extends Page{
 			}
 		}
 		return $a_datos;
+	}
+	
+	
+	//Usuarios no tiene dónde guardar un archivo; avatar[] llega con error como array.
+	protected function hayArchivoEnviado(){
+		foreach($_FILES as $a_file){
+			if($a_file["error"] !== UPLOAD_ERR_NO_FILE){
+				return true;
+			}
+		}
+		return false;
 	}
 	
 	

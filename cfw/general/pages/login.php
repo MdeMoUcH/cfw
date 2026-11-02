@@ -58,7 +58,7 @@ class login extends Page{
 					$tplmsg->vars["text"] = "Te has logueado con éxito.";
 				}elseif(count($user->errores) >= 1){
 					//Un fallo de la BD no cuenta como intento.
-					$tplmsg->vars["text"] = "Hubo algún problema, vuelvaló a intentar más tarde.";
+					$tplmsg->vars["text"] = "Hubo algún problema, vuélvalo a intentar más tarde.";
 				}else{
 					intentos_fallo($s_clave);
 				}

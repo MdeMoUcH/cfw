@@ -15,6 +15,7 @@ class AdminHelper extends Page{
 	protected $jhtmlarea = false;
 	protected $extensiones_permitidas = array("tpl","css");
 	protected $s_error_subida = "";
+	protected $a_subidas_guardadas = array();
 	//Unos 80 MB al decodificar: cabe en un memory_limit de 128M.
 	protected $img_max_pixeles = 16000000;
 	//Las define cada subclase.
@@ -161,21 +162,28 @@ class AdminHelper extends Page{
 		
 		if($save != "" && @$_SERVER["REQUEST_METHOD"] === "POST"){
 			if($orm->insert($_POST)){
-				$tplmsg->vars["color"] = "Green";
-				$tplmsg->vars["text"] = "OK - ".$this->singular." insertado.";
-				
 				$id_aux = mysqli_insert_id($orm->conexion);
 				if($id_aux){
 					$id = $id_aux;
 				}
 				
-				$this->guardarSubidas($orm,$id,$tplmsg);
+				$tplmsg->vars["text"] = "";
+				$this->a_subidas_guardadas = array();
+				
+				if($this->guardarSubidas($orm,$id,$tplmsg)){
+					$tplmsg->vars["color"] = "Green";
+					$tplmsg->vars["text"] = "OK - ".$this->singular." insertado.";
+					
+					if(@$this->categorias && isset($_POST["categorias"])){
+						$this->guardarCategorias($id,$_POST["categorias"]);
+					}
+				}else{
+					$this->deshacerAlta($orm,$id_aux,$tplmsg);
+					$b_insert_error = true;
+					$id = "";
+				}
 				
 				$s_msg = $tplmsg->get();
-				
-				if(@$this->categorias && isset($_POST["categorias"])){
-					$this->guardarCategorias($id,$_POST["categorias"]);
-				}
 			}else{
 				$b_insert_error = true;
 				$tplmsg->vars["text"] = "";
@@ -412,23 +420,30 @@ class AdminHelper extends Page{
 		
 	//Sube los archivos de $_FILES. El tipo se decide por el contenido, nunca por el MIME del cliente.
 	protected function guardarSubidas($orm,$id,$tplmsg){
+		$b_todo_ok = true;
 		foreach($_FILES as $name=>$file){
-			if(!is_string($file["name"]) || $file["name"] == "" || $file["error"] != 0){
+			if($file["error"] === UPLOAD_ERR_NO_FILE){
 				continue;
 			}
 			$b_ok = false;
-			$this->s_error_subida = "campo no válido";
-			if(isset($orm->campos[$name]) && is_uploaded_file($file["tmp_name"])){
+			if(!is_string($file["name"]) || $file["name"] == "" || $file["error"] !== UPLOAD_ERR_OK){
+				$this->s_error_subida = "no se recibió el archivo";
+			}elseif(isset($orm->campos[$name]) && is_uploaded_file($file["tmp_name"])){
 				$a_datos = @getimagesize($file["tmp_name"]);
 				if($a_datos !== false && in_array($a_datos[2],array(1,2,3))){
 					$b_ok = $this->saveImage($file,$id);
 				}else{
 					$b_ok = $this->saveFile($file,$id);
 				}
-			}
-			if($b_ok){
-				$orm->updateField($id,$name,$this->last_file_name);
+				if($b_ok && !$orm->updateField($id,$name,$this->last_file_name)){
+					$b_ok = false;
+					$this->s_error_subida = "no se pudo guardar el dato";
+				}
 			}else{
+				$this->s_error_subida = "campo no válido";
+			}
+			if(!$b_ok){
+				$b_todo_ok = false;
 				$tplmsg->vars["color"] = "Red";
 				if(!isset($tplmsg->vars["text"])){
 					$tplmsg->vars["text"] = "";
@@ -436,6 +451,25 @@ class AdminHelper extends Page{
 				$tplmsg->vars["text"] .= " Hubo algún problema al subir ".escapar($name).": ".$this->s_error_subida.".";
 			}
 		}//foreach
+		return $b_todo_ok;
+	}
+	
+	
+	//Solo con el id que devolvió este INSERT: el id de la URL es de otra fila.
+	protected function deshacerAlta($orm,$id_alta,$tplmsg){
+		//Sin id propio, el nombre del archivo podría ser de otra fila.
+		if($id_alta){
+			foreach($this->a_subidas_guardadas as $s_archivo){
+				@unlink($s_archivo);
+			}
+		}
+		
+		if($id_alta && $orm->eliminarFila($id_alta)){
+			$tplmsg->vars["text"] = "No se ha creado el ".$this->singular.".".$tplmsg->vars["text"];
+		}else{
+			error_log("CFW: no se pudo deshacer el alta en ".$orm->tabla." (id: ".(int)$id_alta.")");
+			$tplmsg->vars["text"] = "No se pudo deshacer el alta del ".$this->singular.": revisa la fila creada.".$tplmsg->vars["text"];
+		}
 	}
 	
 	
@@ -603,6 +637,7 @@ class AdminHelper extends Page{
 		}//if
 		
 		$this->last_file_name = $s_nombre;
+		$this->a_subidas_guardadas[] = $s_ruta.$s_nombre;
 
 		return true;
 	}//fun
@@ -668,6 +703,7 @@ class AdminHelper extends Page{
 		}//if
 		
 		$this->last_file_name = $s_nombre;
+		$this->a_subidas_guardadas[] = $s_ruta.$s_nombre;
 		return true;
 	}//fun
 	

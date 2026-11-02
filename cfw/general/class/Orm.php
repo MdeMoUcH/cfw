@@ -72,6 +72,14 @@ class Orm extends Bbdd
 		return $this->ejecutarInsertUpdate("UPDATE ".$this->tabla." SET borrado = 1 WHERE id = ".$id."");
 	}
 	
+	//Borrado físico, para deshacer un alta. Para borrar datos usa delete.
+	function eliminarFila($id){
+		if(($id = $this->filtroId($id)) === false){
+			return false;
+		}
+		return $this->ejecutarInsertUpdate("DELETE FROM ".$this->tabla." WHERE ".$this->primarykey." = ".$id."");
+	}
+	
     
     function getByIdAdmin($id)
     {

@@ -48,11 +48,11 @@ class cuenta extends Page{
 							$tplaux->vars["text"] = "Los datos se actualizaron correctamente.";
 							$tpl->vars["email"] = escapar($_POST["email"]);
 						}else{
-							$tplaux->vars["text"] = "Hubo algún problema, vuelvaló a intentar más tarde.";
+							$tplaux->vars["text"] = "Hubo algún problema, vuélvalo a intentar más tarde.";
 						}
 					}elseif(count($ormuser->errores) >= 1){
 						//Un fallo de la BD no significa que la contraseña sea incorrecta.
-						$tplaux->vars["text"] = "Hubo algún problema, vuelvaló a intentar más tarde.";
+						$tplaux->vars["text"] = "Hubo algún problema, vuélvalo a intentar más tarde.";
 					}else{
 						$tplaux->vars["text"] = "No se realizó ningún cambio, la contraseña actual no es correcta.";
 					}
