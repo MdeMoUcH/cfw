@@ -35,7 +35,7 @@ class Template extends App{
 			$this->set_ini_vars($template_file);
 		}else{
 			http_response_code(404);
-			$this->showError('No existe el template: '.$template_file);
+			$this->showError(t('text_template_no_existe',array('x' => $template_file)));
 		}
 	}//fun set_template
 	
@@ -52,41 +52,11 @@ class Template extends App{
 	
 	
 	function set_ini_vars($nombre = ''){
-		static $a_ini = array();
-		
-		$ini_file = $this->my_file_exist($nombre.'.ini');
-		if($ini_file != ''){
-			if(!isset($a_ini[$ini_file])){
-				$a_ini[$ini_file] = parse_ini_file($ini_file);
-			}//if
-			$this->set_vars($a_ini[$ini_file]);
+		$a_textos = GestorIdiomas::textos($nombre);
+		if(count($a_textos) >= 1){
+			$this->set_vars($a_textos);
 		}//if
-		
-		$php_file = $this->my_file_exist($nombre.'.php');
-		if($php_file != ''){
-			require_once($php_file);
-			$this->set_vars(get_array_text());
-		}
 	}//fun set_vars
-	
-	
-	function my_file_exist($archivo){
-		$path = $this->config['pathbase'].'cfw/';
-		$lang = $this->session->data['lang'];
-		$default_lang = $this->config['lang_default'];
-		
-		if(file_exists($path.'specific/lang/'.$lang.'/'.$archivo)){
-			return $path.'specific/lang/'.$lang.'/'.$archivo;
-		}elseif(file_exists($path.'specific/lang/'.$default_lang.'/'.$archivo)){
-			return $path.'specific/lang/'.$default_lang.'/'.$archivo;
-		}elseif(file_exists($path.'general/lang/'.$lang.'/'.$archivo)){
-			return $path.'general/lang/'.$lang.'/'.$archivo;
-		}elseif(file_exists($path.'general/lang/'.$default_lang.'/'.$archivo))		{
-			return $path.'general/lang/'.$default_lang.'/'.$archivo;
-		}else{
-			return '';
-		}
-	}//fun my_require_once
 	
 	
 	function get($vars = ''){
@@ -101,7 +71,7 @@ class Template extends App{
 			$s_plantilla = @file_get_contents($this->tpl_file);
 			if($s_plantilla === false){
 				error_log('CFW: error al abrir la plantilla: '.$this->tpl_file);
-				$this->showError('Error al abrir la plantilla.');
+				$this->showError(t('text_error_plantilla'));
 			}//if
 			$a_plantillas[$this->tpl_file] = $s_plantilla;
 		}//if
@@ -117,6 +87,9 @@ class Template extends App{
 			//Se lee de $_SESSION porque la copia de este objeto puede estar anticuada.
 			if($key === "csrf" && isset($_SESSION["csrf"])){
 				return $_SESSION["csrf"];
+			}//if
+			if(strpos($key,'text_') === 0){
+				return t($key);
 			}//if
 			return "";
 		}, $a_plantillas[$this->tpl_file]);

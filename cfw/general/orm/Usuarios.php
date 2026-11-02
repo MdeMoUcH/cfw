@@ -33,36 +33,45 @@ class Usuarios extends Orm
 		$this->campos_form = array(
 								
 								"email" => array(
-									"title" => "E-mail",
+									"title" => t("text_campo_email"),
 									"name" => "email",
 									"type" => "text"),
 								"pass" => array(
-									"title" => "Contraseña",
+									"title" => t("text_campo_pass"),
 									"name" => "pass",
 									"type" => "password"),
 								"pass_confirm" => array(
-									"title" => "Confirmar contraseña",
+									"title" => t("text_campo_pass_confirm"),
 									"name" => "pass_confirm",
 									"type" => "password"),
 								"idioma" => array(
-									"title" => "Idioma",
+									"title" => t("text_campo_idioma"),
 									"name" => "fk_idioma",
 									"type" => "radio",
-									"value" => "es",
-									"opciones" => array("Español" => "es", "Inglés" => "en") ),
+									"value" => GestorIdiomas::porDefecto(),
+									"opciones" => array() ),
 								"activo" => array(
-									"title" => "Estado",
+									"title" => t("text_campo_estado"),
 									"name" => "activo",
 									"type" => "radio",
 									"value" => "1",
-									"opciones" => array("Activo" => "1", "Inactivo" => "0") ),
+									"opciones" => array(t("text_activo") => "1", t("text_inactivo") => "0") ),
 								"fk_tipo_usuario" => array(
-									"title" => "Tipo Usuario",
+									"title" => t("text_campo_tipo"),
 									"name" => "fk_tipo_usuario",
 									"type" => "radio",
 									"value" => "0",
-									"opciones" => array("Usuario" => "0", "Admin" => "1") )
+									"opciones" => array(t("text_tipo_usuario") => "0", t("text_tipo_admin") => "1") )
 							);
+		
+		if(GestorIdiomas::hayVarios()){
+			$a_disponibles = GestorIdiomas::disponibles();
+			foreach(GestorIdiomas::activos() as $s_codigo){
+				$this->campos_form["idioma"]["opciones"][$a_disponibles[$s_codigo]] = $s_codigo;
+			}
+		}else{
+			unset($this->campos_form["idioma"]);
+		}
 							
 	}//constructor
 
@@ -85,10 +94,13 @@ class Usuarios extends Orm
 		}
 		
 		if(isset($this->resultado[0]['email'])){
-			$tpl = new Template('main');
-			$this->errores[] = $tpl->vars['text_error_usuario_mail'];
+			$this->errores[] = t('text_error_usuario_mail');
 			return false;
 		}else{
+			$a_array = $this->normalizarIdioma($a_array);
+			if(!isset($a_array["fk_idioma"])){
+				$a_array["fk_idioma"] = GestorIdiomas::porDefecto();
+			}
 			return parent::insert($a_array);
 		}
 	}
@@ -101,8 +113,7 @@ class Usuarios extends Orm
 			$i_errores = count($this->errores);
 			if($this->ejecutarConsulta($s_sql)){
 				if($this->resultado[0]["id"] != $id_efectivo){
-					$tpl = new Template('main');
-					$this->errores[] = $tpl->vars['text_error_usuario_mail'];
+					$this->errores[] = t('text_error_usuario_mail');
 					return false;
 				}
 			}elseif(count($this->errores) > $i_errores){
@@ -110,7 +121,21 @@ class Usuarios extends Orm
 			}
 		}
 		
-		return parent::update($a_datos, $id);
+		return parent::update($this->normalizarIdioma($a_datos), $id);
+	}
+	
+	
+	//Un idioma no activo no se guarda: acaba decidiendo qué ficheros se leen.
+	protected function normalizarIdioma($a_datos){
+		if(array_key_exists("fk_idioma",$a_datos)){
+			$valor = is_array($a_datos["fk_idioma"]) ? @$a_datos["fk_idioma"][0] : $a_datos["fk_idioma"];
+			if(is_string($valor) && in_array($valor,GestorIdiomas::activos(),true)){
+				$a_datos["fk_idioma"] = $valor;
+			}else{
+				unset($a_datos["fk_idioma"]);
+			}
+		}
+		return $a_datos;
 	}
 	
 	
@@ -129,14 +154,14 @@ class Usuarios extends Orm
 	
 	function getUserNameById($id){
 		if(($id = $this->filtroId($id)) === false){
-			return "Usuario Desconocido";
+			return t("text_usuario_desconocido");
 		}
 		$s_sql = "SELECT email FROM ".$this->tabla." WHERE id = ".$id."";
 		
 		if($this->ejecutarConsulta($s_sql)){
 			return $this->resultado[0]["email"];
 		}else{
-			return "Usuario Desconocido";
+			return t("text_usuario_desconocido");
 		}
 	}
 	

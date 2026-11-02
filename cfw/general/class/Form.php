@@ -27,7 +27,7 @@ class Form //extends App
 		
 		$this->a_default_buttons = array();
 		//$this->a_default_buttons[] = array("name" => "button","value" => "Enviar","onclick" => "");
-		$this->a_default_buttons[] = array("name" => "button","class"=>"button","value" => "Guardar","onclick" => "");
+		$this->a_default_buttons[] = array("name" => "button","class"=>"button","value" => t("text_guardar"),"onclick" => "");
 	}
 	
 	function setAction($action){

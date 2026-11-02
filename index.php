@@ -28,11 +28,12 @@ function comprobar_csrf($page)
 	if(@$_SERVER["REQUEST_METHOD"] === "POST" && !$page->session->comprobarCsrf(@$_POST["csrf"]))
 	{
 		http_response_code(403);
-		$page->showError("La petición no es válida. Vuelve a cargar la página e inténtalo de nuevo.");
+		$page->showError(t("text_peticion_no_valida"));
 	}//if
 }//fun comprobar_csrf
 
 
+//Clave y parámetros: el texto se traduce cuando ya hay sesión.
 $errores = array();
 if(PHP_SAPI === 'cli'){
 	$class = isset($argv[1]) ? $argv[1] : $app->config["class.default"];
@@ -48,14 +49,14 @@ if(PHP_SAPI === 'cli'){
 
 if(!is_string($class) || !preg_match('/^[a-z0-9_]+$/D', $class))
 {
-	$errores[] = "La página no es válida.";
+	$errores[] = array("text_pagina_no_valida");
 }//if
 
 if(@$_GET["uno"] !== null && @$_GET["uno"] !== "")
 {
 	if(!is_string($_GET["uno"]) || !preg_match('/^[a-z0-9_]+$/D', $_GET["uno"]))
 	{
-		$errores[] = "La página no es válida.";
+		$errores[] = array("text_pagina_no_valida");
 	}//if
 	elseif(file_exists($app->config["pathbase"]."cfw/specific/pages/".$_GET["uno"].".php") ||
 		file_exists($app->config["pathbase"]."cfw/general/pages/".$_GET["uno"].".php"))
@@ -64,7 +65,7 @@ if(@$_GET["uno"] !== null && @$_GET["uno"] !== "")
 	}//elseif
 	else
 	{
-		$errores[] = "No se encontró el archivo '".$_GET["uno"]."'.";
+		$errores[] = array("text_archivo_no_encontrado", array("x" => $_GET["uno"]));
 	}//else
 }//if
 
@@ -72,14 +73,14 @@ foreach(array($arg1, $arg2, $arg3) as $arg)
 {
 	if($arg !== null && !is_string($arg))
 	{
-		$errores[] = "La dirección no es válida.";
+		$errores[] = array("text_direccion_no_valida");
 		break;
 	}//if
 }//foreach
 
 if(count($errores) < 1 && $arg1 != "" && !preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/D', $arg1))
 {
-	$errores[] = "La dirección no es válida.";
+	$errores[] = array("text_direccion_no_valida");
 }//if
 
 
@@ -107,7 +108,7 @@ if(count($errores) < 1)
 			}//if
 			else
 			{
-				$errores[] = "El método '".$arg1."' de la clase '".$class."' no es público.";
+				$errores[] = array("text_metodo_no_publico", array("metodo" => $arg1, "clase" => $class));
 			}//else
 		}//if
 		elseif($arg1 != "")
@@ -122,7 +123,7 @@ if(count($errores) < 1)
 			}//if
 			/ **NO HAGAN ESTO EN CASA** /
 			*/
-			$errores[] = "No existe el método '".$arg1."' en la clase '".$class."'.";
+			$errores[] = array("text_metodo_no_existe", array("metodo" => $arg1, "clase" => $class));
 		}//elseif
 		else
 		{
@@ -135,7 +136,7 @@ if(count($errores) < 1)
 	}//if
 	else
 	{
-		$errores[] = "No existe la clase '".$class."'.";
+		$errores[] = array("text_clase_no_existe", array("clase" => $class));
 	}//else
 }//if
 
@@ -144,10 +145,15 @@ if(count($errores) < 1)
 
 if(!$app->config["desarrollo"])
 {
-	$errores = array("Sorry bro, 404");
+	$errores = array(array("text_404_produccion"));
 }
 http_response_code(404);
 $page = new ErrorCFW();
-$page->init($errores);
+$a_textos_error = array();
+foreach($errores as $a_error)
+{
+	$a_textos_error[] = t($a_error[0], isset($a_error[1]) ? $a_error[1] : array());
+}//foreach
+$page->init($a_textos_error);
 
 

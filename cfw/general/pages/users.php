@@ -11,9 +11,15 @@
 class users extends Page{
 	
 	protected $class = "Usuarios";
-	protected $titulo = "Usuarios";
+	protected $titulo = "";
 	protected $slug = "usuarios";
 	protected $template = "usuarios_admin";
+	
+	
+	function __construct(){
+		parent::__construct();
+		$this->titulo = t("text_usuarios");
+	}
 	
 	
 	function init(){
@@ -33,12 +39,12 @@ class users extends Page{
 				//meter en template ¿o qué? majo...
 				$tpl->vars["content"] .= "<p><b><a href='".$this->config["urlbase"]."admin/users/id/".$user["id"]."'>".escapar($user["email"])."</a></b>";
 				if($this->session->isUserAdmin()){
-					$tpl->vars["content"] .= "&nbsp;-&nbsp;<a href='".$this->config["urlbase"]."admin/users/edit/".$user["id"]."'>Editar</a>";
+					$tpl->vars["content"] .= "&nbsp;-&nbsp;<a href='".$this->config["urlbase"]."admin/users/edit/".$user["id"]."'>".t("text_editar")."</a>";
 				}
 				$tpl->vars["content"] .= "</p>";
 			}
 		}else{
-			$tpl->vars["content"] = "No hay ningún ".$this->slug.".";
+			$tpl->vars["content"] = t("text_no_hay_usuarios");
 		}
 		$orm->cerrar();
 		//muere($tpl,1,0);muere($tpl->get(),1);
@@ -61,11 +67,11 @@ class users extends Page{
 			//$tpl->vars["content"] = "<p>".nl2br($user["descripcion"])."</p>";
 			$tpl->vars["content"] = "<p>".escapar($user["email"])."</p>";
 			if($this->session->isUserAdmin()){
-				$tpl->vars["content"] .= "<p><a href='".$this->config["urlbase"]."admin/users/edit/".$user["id"]."'>Editar</a></p>";
+				$tpl->vars["content"] .= "<p><a href='".$this->config["urlbase"]."admin/users/edit/".$user["id"]."'>".t("text_editar")."</a></p>";
 			}			
 		}else{
 			$tpl->vars["content"] = $this->titulo;
-			$tpl->vars["content"] = "No se encontró el ".$this->slug.".";
+			$tpl->vars["content"] = t("text_usuario_no_encontrado");
 		}
 		$orm->cerrar();
 		
@@ -96,18 +102,18 @@ class users extends Page{
 			if($s_pass == "" || !email_valido(@$a_datos["email"])){
 				$b_insert_error = true;
 				$tplmsg->vars["color"] = "Red";
-				$tplmsg->vars["text"] = "El email tiene que ser correcto y la contraseña no puede estar vacía";
+				$tplmsg->vars["text"] = t("text_users_email_pass");
 				
 				$s_msg = $tplmsg->get();
 			}elseif($this->hayArchivoEnviado()){
 				$b_insert_error = true;
 				$tplmsg->vars["color"] = "Red";
-				$tplmsg->vars["text"] = "No se ha creado el usuario: este formulario no admite archivos.";
+				$tplmsg->vars["text"] = t("text_users_sin_archivos");
 				
 				$s_msg = $tplmsg->get();
 			}elseif($orm->insert($a_datos)){
 				$tplmsg->vars["color"] = "Green";
-				$tplmsg->vars["text"] = "OK - usuario insertado";
+				$tplmsg->vars["text"] = t("text_users_insertado");
 				
 				$s_msg = $tplmsg->get();
 			}else{
@@ -124,7 +130,7 @@ class users extends Page{
 		}elseif($b_guardar){
 			$b_insert_error = true;
 			$tplmsg->vars["color"] = "Red";
-			$tplmsg->vars["text"] = "Las contraseñas no son iguales";
+			$tplmsg->vars["text"] = t("text_pass_distintas");
 			$s_msg = $tplmsg->get();
 		}
 		
@@ -134,7 +140,7 @@ class users extends Page{
 			if($orm->getByIdAdmin($id)){
 				$a_values = $orm->resultado[0];
 				$orm->campos_form["id"] = array("title" => "","name" => "id","type" => "hidden");
-				$orm->campos_form["borrado"] = array("title" => "Borrado","name" => "borrado","type" => "radio", "opciones" => array("Si" => "1", "No" => "0"));
+				$orm->campos_form["borrado"] = array("title" => t("text_campo_borrado"),"name" => "borrado","type" => "radio", "opciones" => array(t("text_si") => "1", t("text_no") => "0"));
 				$s_action = "edit/".$id."/save";
 			}
 		}elseif(count($_POST) >= 1 && $b_insert_error){
@@ -156,7 +162,7 @@ class users extends Page{
 		
 		$tpl = new Template($this->slug);
 		$tpl->vars["urlbase"] = $this->config["urlbase"];
-		$tpl->vars["titulo"] = $this->titulo." Form";
+		$tpl->vars["titulo"] = t("text_titulo_form",array("titulo" => $this->titulo));
 		
 		$tpl->vars["content"] = $s_msg.$form->getForm();
 			
@@ -181,17 +187,17 @@ class users extends Page{
 			
 			$tplmsg->vars["color"] = "Red";
 			if($s_pass !== $s_pass_confirm){
-				$tplmsg->vars["text"] = "Las contraseñas no son iguales";
+				$tplmsg->vars["text"] = t("text_pass_distintas");
 				$s_msg = $tplmsg->get();
 			}elseif(!email_valido(@$a_datos["email"])){
-				$tplmsg->vars["text"] = "El email no es correcto";
+				$tplmsg->vars["text"] = t("text_email_incorrecto");
 				$s_msg = $tplmsg->get();
 			}elseif($this->seQuedariaSinAcceso($id,$a_datos)){
-				$tplmsg->vars["text"] = "No puedes desactivarte, borrarte ni quitarte el rol de administrador a ti mismo";
+				$tplmsg->vars["text"] = t("text_autobloqueo");
 				$s_msg = $tplmsg->get();
 			}elseif($orm->update($a_datos,$id)){
 				$tplmsg->vars["color"] = "Green";
-				$tplmsg->vars["text"] = "Usuario actualizado con éxito.";
+				$tplmsg->vars["text"] = t("text_usuario_actualizado");
 					
 				$s_msg = $tplmsg->get();
 				

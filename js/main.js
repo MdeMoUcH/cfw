@@ -1,6 +1,5 @@
 /*** CFW ***/
 
-var text_rellena_ambos_campos = "Rellena ambos campos.";
 var b_login_enviado = false;
 
 

@@ -25,7 +25,7 @@ class DinamicOrm extends Orm
 	
 		//Para los form:
 		$this->campos_form = array(
-								"name" => array("title" => "Título",
+								"name" => array("title" => t("text_campo_titulo"),
 									"name" => "titulo",
 									"type" => "text")
 							);
@@ -47,7 +47,7 @@ class DinamicOrm extends Orm
 		$s_sql = "SELECT * FROM ".$this->tabla." WHERE id = '".$id."'";
 		
 		if($this->ejecutarConsulta($s_sql)){
-			$this->errores[] = "Hubo algún error.";
+			$this->errores[] = t("text_error_generico");
 			return false;
 		}else{
 			return parent::insert($a_array);

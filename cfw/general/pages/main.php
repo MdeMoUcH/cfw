@@ -19,7 +19,7 @@ class main extends Page {
 	function init($arg1 = "main", $arg2 = ""){
 		if(!in_array((string)$arg1,$this->a_plantillas_permitidas,true)){
 			http_response_code(404);
-			$this->showError("No existe la página.");
+			$this->showError(t("text_pagina_no_existe"));
 		}
 		
 		$this->vars["menu"] = $this->get_menu($arg1);

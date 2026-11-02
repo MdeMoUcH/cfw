@@ -71,7 +71,7 @@ class Page extends App
 		{
 			//Un fallo de la BD no debe cerrar la sesión.
 			http_response_code(503);
-			$this->showError("El servicio no está disponible en este momento.");
+			$this->showError(t("text_servicio_no_disponible"));
 		}//if
 		
 		if(!$a_usuario || ($b_admin && $a_usuario["fk_tipo_usuario"] != 1))
@@ -79,7 +79,38 @@ class Page extends App
 			$this->session->setUserOut();
 			$this->redirigir($s_destino);
 		}//if
+		
+		if($a_usuario["fk_idioma"] !== $this->session->data["lang"])
+		{
+			$this->session->setLang($a_usuario["fk_idioma"]);
+		}//if
 	}//fun revalidarSesion
+	
+	
+	//Guarda la clave, no el texto: tras cambiar de idioma debe pintarse en el nuevo.
+	protected function guardarFlash($s_color, $s_clave)
+	{
+		$this->session->data["flash"] = array("color" => $s_color, "clave" => $s_clave);
+		$this->session->actualiza();
+	}//fun guardarFlash
+	
+	
+	protected function leerFlash()
+	{
+		if(!isset($this->session->data["flash"]))
+		{
+			return "";
+		}//if
+		
+		$a_flash = $this->session->data["flash"];
+		unset($this->session->data["flash"]);
+		$this->session->actualiza();
+		
+		$tpl = new Template("html/p_color");
+		$tpl->vars["color"] = $a_flash["color"];
+		$tpl->vars["text"] = t($a_flash["clave"]);
+		return $tpl->get();
+	}//fun leerFlash
 	
 	
 	function set_vars($vars)
@@ -123,6 +154,7 @@ class Page extends App
 		}//if
 		
 		$this->vars["urlbase"] = $this->config["urlbase"];
+		$this->vars["lang_actual"] = GestorIdiomas::actual();
 		
 		$tpl = new Template("cascara");
 		
@@ -140,20 +172,21 @@ class Page extends App
 	function get_menu($selected = "main"){
 		$tpl = new Template("menu");
 		$vars = array();
-		$vars["class_".$selected] = $tpl->vars["class"];
+		$vars["class_".$selected] = 'class="active" ';
 		
 		if($this->session->isUserAdmin()){
-			$vars["admin"] = "Administrador";
+			$vars["admin"] = t("text_menu_admin");
 			$vars["url_admin"] = "admin";
 		}
 		
 		
 		$vars["enlaces_usuario"] = "";
 		if($this->session->isUserLogged()){
-			$vars["enlaces_usuario"] .= '<li><a href="'.$this->config["urlbase"].'admin/cuenta">Cuenta</a></li>';
+			$vars["enlaces_usuario"] .= '<li><a href="'.$this->config["urlbase"].'admin/cuenta">'.t("text_menu_cuenta").'</a></li>';
 		}
 		if($this->session->isUserAdmin()){
-			$vars["enlaces_usuario"] .= '<li><a href="'.$this->config["urlbase"].'admin/users">Usuarios</a></li>';
+			$vars["enlaces_usuario"] .= '<li><a href="'.$this->config["urlbase"].'admin/users">'.t("text_usuarios").'</a></li>';
+			$vars["enlaces_usuario"] .= '<li><a href="'.$this->config["urlbase"].'admin/idiomas">'.t("text_menu_idiomas").'</a></li>';
 		}
 		
 		$tpl->set_vars($vars);

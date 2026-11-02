@@ -33,7 +33,7 @@ class Bbdd extends App
         else
         {
             error_log("CFW: no se pudo conectar a la base de datos: ".mysqli_connect_error());
-            $this->errores[] = "No se pudo conectar a la base de datos.";
+            $this->errores[] = t("text_bd_conexion");
         }//else
     }//constructor
 
@@ -60,7 +60,7 @@ class Bbdd extends App
         
         if(!$this->conexion)
         {
-            $this->errores[] = "Error en la consulta.";
+            $this->errores[] = t("text_bd_consulta");
             return false;
         }//if
         
@@ -69,7 +69,7 @@ class Bbdd extends App
         if($result === false)
         {
             error_log("CFW: error en la consulta: ".mysqli_error($this->conexion));
-            $this->errores[] = "Error en la consulta.";
+            $this->errores[] = t("text_bd_consulta");
         }//if
         elseif($result instanceof mysqli_result)
         {
@@ -100,7 +100,7 @@ class Bbdd extends App
     {
         if(!$this->conexion)
         {
-            $this->errores[] = "Error en el insert-update.";
+            $this->errores[] = t("text_bd_escritura");
             return false;
         }//if
         
@@ -108,7 +108,7 @@ class Bbdd extends App
         if(!$b_ok)
         {
             error_log("CFW: error en el insert-update: ".mysqli_error($this->conexion));
-            $this->errores[] = "Error en el insert-update.";
+            $this->errores[] = t("text_bd_escritura");
         }//if
 
         return $b_ok;

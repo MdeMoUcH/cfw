@@ -45,7 +45,7 @@ class Orm extends Bbdd
 		if(is_scalar($id) && ctype_digit((string)$id)){
 			return (int)$id;
 		}
-		$this->errores[] = "id no válido";
+		$this->errores[] = t("text_id_no_valido");
 		return false;
 	}//fun filtroId
 	
@@ -108,7 +108,7 @@ class Orm extends Bbdd
 	function getByFkId($s_campo, $id)
     {
 		if(!is_string($s_campo) || !isset($this->campos[$s_campo])){
-			$this->errores[] = "Campo no válido";
+			$this->errores[] = t("text_campo_no_valido");
 			return false;
 		}
 		if(($id = $this->filtroId($id)) === false){
@@ -160,7 +160,7 @@ class Orm extends Bbdd
 		if($id == "" && isset($a_datos["id"]) && $a_datos["id"] != ""){
 			$id = $a_datos["id"];
 		}elseif($id == ""){
-			$this->errores[] = "No se especificó un id.";
+			$this->errores[] = t("text_sin_id");
 			return false;
 		}
 		if(($id = $this->filtroId($id)) === false){
@@ -181,7 +181,7 @@ class Orm extends Bbdd
 			}
 		}
 		if($s_query == ""){
-			$this->errores[] = "No hay datos que actualizar.";
+			$this->errores[] = t("text_sin_datos_actualizar");
 			return false;
 		}
 		$s_sql = "UPDATE ".$this->tabla." SET ".$s_query." WHERE id = ".$id."";
@@ -209,7 +209,7 @@ class Orm extends Bbdd
 		}
 		
 		if($s_campos == ""){
-			$this->errores[] = "No hay datos que insertar.";
+			$this->errores[] = t("text_sin_datos_insertar");
 			return false;
 		}
 		
@@ -225,7 +225,7 @@ class Orm extends Bbdd
 	
 	function updateField($id,$campo,$value){
 		if(!is_string($campo) || !isset($this->campos[$campo]) || $campo === $this->primarykey || !is_scalar($value)){
-			$this->errores[] = "Campo no válido";
+			$this->errores[] = t("text_campo_no_valido");
 			return false;
 		}
 		if(($id = $this->filtroId($id)) === false){
@@ -235,7 +235,7 @@ class Orm extends Bbdd
 		//Vaciar a propósito sí se admite; perder el valor al filtrar, no.
 		$s_valor = $this->filtro($value);
 		if($s_valor === "" && trim((string)$value) !== ""){
-			$this->errores[] = "Valor no válido";
+			$this->errores[] = t("text_valor_no_valido");
 			return false;
 		}
 		

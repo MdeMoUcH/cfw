@@ -119,7 +119,7 @@ class Msession extends AppConf
             $this->data["admin"] = true;
         }//else
         
-        //El idioma acaba formando una ruta en Template::my_file_exist.
+        //GestorIdiomas decide en cada lectura si este idioma sigue activo.
         if(is_string($lang) && preg_match('/^[a-z]{2}$/D', $lang)){
 			$this->data["lang"] = $lang;
 		}else{
@@ -129,6 +129,21 @@ class Msession extends AppConf
         $this->nuevoCsrf();
         $this->actualiza();
     }//fun
+
+	//Solo la sesión: quien llama guarda el idioma en la BD.
+	function setLang($s_codigo)
+	{
+		if(is_string($s_codigo) && preg_match('/^[a-z]{2}$/D', $s_codigo))
+		{
+			$this->data["lang"] = $s_codigo;
+		}//if
+		else
+		{
+			$this->data["lang"] = $this->config["lang_default"];
+		}//else
+
+		$this->actualiza();
+	}//fun
 
 	function setUserOut()
     {

@@ -19,6 +19,10 @@ class login extends Page{
 	function init(){
 		$this->add_include("js",$this->config["urlbase"]."js/jquery-4.0.0.min.js");
 		$this->add_include("js",$this->config["urlbase"]."js/js-md5-0.9.2.min.js");
+		$tpljs = new Template("html/js_var");
+		$tpljs->vars["nombre"] = "text_rellena_ambos_campos";
+		$tpljs->vars["valor"] = json_js(t("text_rellena_ambos_campos"));
+		$this->vars["js"] .= $tpljs->get();
 		$this->add_include("js",$this->config["urlbase"]."js/main.js");
 		
 		$s_msg = "";
@@ -31,7 +35,7 @@ class login extends Page{
 			$b_logueado = true;
 			
 			$tplmsg->vars["color"] = "Blue";
-			$tplmsg->vars["text"] = "Ya estás logueado";	
+			$tplmsg->vars["text"] = t("text_ya_logueado");	
 			
 			$s_msg = $tplmsg->get();
 		}
@@ -41,7 +45,7 @@ class login extends Page{
 		
 		if($s_nick != "" && $s_pass != ""){
 			$tplmsg->vars["color"] = "Red";
-			$tplmsg->vars["text"] = "El usuario o la contraseña no son correctos.";
+			$tplmsg->vars["text"] = t("text_login_incorrecto");
 			
 			$user = new Usuarios();
 			//La clave del contador es el email guardado: MySQL iguala variantes que el texto enviado no.
@@ -55,10 +59,10 @@ class login extends Page{
 					
 					$b_logueado = true;
 					$tplmsg->vars["color"] = "Green";
-					$tplmsg->vars["text"] = "Te has logueado con éxito.";
+					$tplmsg->vars["text"] = t("text_login_ok");
 				}elseif(count($user->errores) >= 1){
 					//Un fallo de la BD no cuenta como intento.
-					$tplmsg->vars["text"] = "Hubo algún problema, vuélvalo a intentar más tarde.";
+					$tplmsg->vars["text"] = t("text_problema_reintentar");
 				}else{
 					intentos_fallo($s_clave);
 				}
@@ -70,16 +74,16 @@ class login extends Page{
 		$this->vars["menu"] = $this->get_menu("main");
 		$tpl = new Template("usuarios");
 		$tpl->vars["urlbase"] = $this->config["urlbase"];
-		$tpl->vars["titulo"] = "Login";
+		$tpl->vars["titulo"] = t("text_login");
 		
 		
 		if(!$b_logueado){
-			$campos_form = array("nick" => array("title" => "E-mail",
+			$campos_form = array("nick" => array("title" => t("text_campo_email"),
 										"name" => "nick",
 										"type" => "text",
 										"value" => "",
 										"onclick" => ""),
-									"pass" => array("title" => "Contraseña",
+									"pass" => array("title" => t("text_campo_pass"),
 										"name" => "pass",
 										"type" => "password",
 										"value" => "",
@@ -88,7 +92,7 @@ class login extends Page{
 			
 			$a_buttons = array();
 			$a_buttons[] = array("name" => "button",
-								"value" => "Login",
+								"value" => t("text_login"),
 								"class" => "button",
 								"onclick" => "javascript:sendLoginForm();");
 			$form = new Form();
@@ -125,10 +129,10 @@ class login extends Page{
 			if($this->session->isUserLogged()){
 				$this->session->setUserOut();
 				$tplmsg->vars["color"] = "Blue";
-				$tplmsg->vars["text"] = "Has salido de tu cuenta.";	
+				$tplmsg->vars["text"] = t("text_logout_ok");	
 			}else{
 				$tplmsg->vars["color"] = "Red";
-				$tplmsg->vars["text"] = "No estás logueado.";	
+				$tplmsg->vars["text"] = t("text_no_logueado");	
 			}
 			
 			$this->s_mensaje_interno = $tplmsg->get();

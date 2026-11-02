@@ -88,6 +88,7 @@ class AdminHelper extends Page{
 			}
 			
 			$tpl_aux = new Template("listado_pro");
+			$tpl_aux->vars["confirmar_borrado_json"] = json_js(t("text_confirmar_borrado"));
 			$tpl_aux->vars["elementos"] = $tpl->vars["content"];
 			$tpl->vars["content"] = $tpl_aux->get();
 			
@@ -95,7 +96,7 @@ class AdminHelper extends Page{
 			$this->add_include("js",$this->config["urlbase"]."js/tablekit.js");
 		}else{
 			$tpl->vars["content"] = $this->titulo;
-			$tpl->vars["content"] = "No hay ningún ".$this->singular.".";
+			$tpl->vars["content"] = t("text_no_hay_elemento",array("elemento" => $this->singular));
 		}
 		
 		$orm->cerrar();
@@ -133,11 +134,11 @@ class AdminHelper extends Page{
 				
 				$tplp = new Template("html/p");
 				$tplp->vars["text"] = $tpleditar->get();
-				$tpl->vars["content"] .= "<p><a href='".$this->config["urlbase"]."admin/".$this->slug."/edit/".$element["id"]."'>Editar</a></p>";
+				$tpl->vars["content"] .= "<p><a href='".$this->config["urlbase"]."admin/".$this->slug."/edit/".$element["id"]."'>".t("text_editar")."</a></p>";
 			}		
 		}else{
 			$tpl->vars["content"] = $this->titulo;
-			$tpl->vars["content"] = "No se encontró el ".$this->singular.".";
+			$tpl->vars["content"] = t("text_elemento_no_encontrado",array("elemento" => $this->singular));
 		}
 		$orm->cerrar();
 		
@@ -168,7 +169,7 @@ class AdminHelper extends Page{
 				
 				if($this->guardarSubidas($orm,$id,$tplmsg)){
 					$tplmsg->vars["color"] = "Green";
-					$tplmsg->vars["text"] = "OK - ".$this->singular." insertado.";
+					$tplmsg->vars["text"] = t("text_elemento_insertado",array("elemento" => $this->singular));
 					
 					if(@$this->categorias && isset($_POST["categorias"])){
 						$this->guardarCategorias($id,$_POST["categorias"]);
@@ -258,7 +259,7 @@ class AdminHelper extends Page{
 				}
 			}
 			
-			$a_campos["categorias"] = array("title" => "Categorías",
+			$a_campos["categorias"] = array("title" => t("text_categorias"),
 											"name" => "categorias",
 											"type" => "checkbox_dinamico",
 											"tabla" => $this->categorias,
@@ -277,7 +278,7 @@ class AdminHelper extends Page{
 		
 		$tpl = $this->load_template();
 		$tpl->vars["urlbase"] = $this->config["urlbase"];
-		$tpl->vars["titulo"] = $this->titulo." Form";
+		$tpl->vars["titulo"] = t("text_titulo_form",array("titulo" => $this->titulo));
 		$tpl->vars["slug"] = $this->slug;
 		
 		$tpl->vars["content"] = $s_msg.$form->getForm();
@@ -301,7 +302,7 @@ class AdminHelper extends Page{
 			}
 			if($orm->update($_POST,$id)){
 				$tplmsg->vars["color"] = "Green";
-				$tplmsg->vars["text"] = ucfirst((string)$this->singular)." actualizado con éxito.";
+				$tplmsg->vars["text"] = t("text_elemento_actualizado",array("Elemento" => ucfirst((string)$this->singular)));
 					
 				$this->guardarSubidas($orm,$id,$tplmsg);
 				
@@ -333,18 +334,18 @@ class AdminHelper extends Page{
 		if(@$_SERVER["REQUEST_METHOD"] !== "POST"){
 			http_response_code(405);
 			header("Allow: POST");
-			$this->showError("El borrado solo admite POST.");
+			$this->showError(t("text_borrado_solo_post"));
 		}
 		
 		//$this->vars["menu"] = $this->get_menu($this->slug);
 		$tpl = new Template("main");
-		$tpl->vars["titulo"] = "Borrado de ".$this->titulo;
+		$tpl->vars["titulo"] = t("text_borrado_de",array("titulo" => $this->titulo));
 		
 		$orm = new $this->class();
 		if($orm->delete($id)){
-			$tpl->vars["content"] = $this->singular." con id ".escapar($id)." se borrado correctamente.<br/><a href='javascript:window.history.back();'>Volver</a>";
+			$tpl->vars["content"] = t("text_borrado_ok",array("elemento" => $this->singular, "id" => escapar($id)))."<br/><a href='javascript:window.history.back();'>".t("text_volver")."</a>";
 		}else{
-			$tpl->vars["content"] = $this->singular." con id ".escapar($id)." no se borró correctamente.<br/><a href='javascript:window.history.back();'>Volver</a>";
+			$tpl->vars["content"] = t("text_borrado_ko",array("elemento" => $this->singular, "id" => escapar($id)))."<br/><a href='javascript:window.history.back();'>".t("text_volver")."</a>";
 		}
 		
 		
@@ -362,7 +363,7 @@ class AdminHelper extends Page{
 		//Igual que users: la contraseña nunca en claro, ni vacía, ni devuelta en la respuesta.
 		if(@$_POST["field"] === "pass"){
 			if(!is_string($valor) || $valor === ""){
-				die("Hubo un error");
+				die(t("text_hubo_error"));
 			}
 			$valor = md5($valor);
 			$s_salida = "";
@@ -370,7 +371,7 @@ class AdminHelper extends Page{
 		if($orm->updateField(@$_POST["id"],@$_POST["field"],$valor)){
 			die(escapar($s_salida));
 		}else{
-			die("Hubo un error");
+			die(t("text_hubo_error"));
 		}
 	}
 	
@@ -415,7 +416,7 @@ class AdminHelper extends Page{
 			}
 			$b_ok = false;
 			if(!is_string($file["name"]) || $file["name"] == "" || $file["error"] !== UPLOAD_ERR_OK){
-				$this->s_error_subida = "no se recibió el archivo";
+				$this->s_error_subida = t("text_subida_no_recibido");
 			}elseif(isset($orm->campos[$name]) && is_uploaded_file($file["tmp_name"])){
 				$a_datos = @getimagesize($file["tmp_name"]);
 				if($a_datos !== false && in_array($a_datos[2],array(1,2,3))){
@@ -425,10 +426,10 @@ class AdminHelper extends Page{
 				}
 				if($b_ok && !$orm->updateField($id,$name,$this->last_file_name)){
 					$b_ok = false;
-					$this->s_error_subida = "no se pudo guardar el dato";
+					$this->s_error_subida = t("text_subida_dato");
 				}
 			}else{
-				$this->s_error_subida = "campo no válido";
+				$this->s_error_subida = t("text_subida_campo");
 			}
 			if(!$b_ok){
 				$b_todo_ok = false;
@@ -436,7 +437,7 @@ class AdminHelper extends Page{
 				if(!isset($tplmsg->vars["text"])){
 					$tplmsg->vars["text"] = "";
 				}
-				$tplmsg->vars["text"] .= " Hubo algún problema al subir ".escapar($name).": ".$this->s_error_subida.".";
+				$tplmsg->vars["text"] .= " ".t("text_subida_problema",array("campo" => escapar($name), "error" => $this->s_error_subida));
 			}
 		}//foreach
 		return $b_todo_ok;
@@ -453,10 +454,10 @@ class AdminHelper extends Page{
 		}
 		
 		if($id_alta && $orm->eliminarFila($id_alta)){
-			$tplmsg->vars["text"] = "No se ha creado el ".$this->singular.".".$tplmsg->vars["text"];
+			$tplmsg->vars["text"] = t("text_alta_deshecha",array("elemento" => $this->singular)).$tplmsg->vars["text"];
 		}else{
 			error_log("CFW: no se pudo deshacer el alta en ".$orm->tabla." (id: ".(int)$id_alta.")");
-			$tplmsg->vars["text"] = "No se pudo deshacer el alta del ".$this->singular.": revisa la fila creada.".$tplmsg->vars["text"];
+			$tplmsg->vars["text"] = t("text_alta_no_deshecha",array("elemento" => $this->singular)).$tplmsg->vars["text"];
 		}
 	}
 	
@@ -483,21 +484,21 @@ class AdminHelper extends Page{
 		
 		if($a_datos === false || !in_array($a_datos[2],array(1,2,3)) || $a_datos[0] < 1 || $a_datos[1] < 1)
 		{
-			$this->s_error_subida = "el contenido no es una imagen admitida";
+			$this->s_error_subida = t("text_img_no_admitida");
 			return false;
 		}//if
 		
 		//Las dimensiones vienen de la cabecera: decodificar una imagen enorme agotaría la memoria con un fatal.
 		if($a_datos[0] * $a_datos[1] > $this->img_max_pixeles)
 		{
-			$this->s_error_subida = "la imagen es demasiado grande";
+			$this->s_error_subida = t("text_img_grande");
 			return false;
 		}//if
 		
 		if(!function_exists("imagecreatetruecolor"))
 		{
 			error_log("CFW: saveImage necesita la extensión GD");
-			$this->s_error_subida = "el servidor no tiene GD";
+			$this->s_error_subida = t("text_img_sin_gd");
 			return false;
 		}//if
 		
@@ -506,7 +507,7 @@ class AdminHelper extends Page{
 		if(!function_exists($a_funciones[$a_datos[2]][0]) || !function_exists($a_funciones[$a_datos[2]][1]))
 		{
 			error_log("CFW: GD no admite el tipo de imagen ".$a_datos[2]);
-			$this->s_error_subida = "el servidor no admite este tipo de imagen";
+			$this->s_error_subida = t("text_img_tipo");
 			return false;
 		}//if
 
@@ -525,7 +526,7 @@ class AdminHelper extends Page{
 		if(!is_numeric($anchura) || !is_numeric($hmax) || $anchura <= 0 || $hmax <= 0 || $s_ruta == "")
 		{
 			error_log("CFW: saveImage sin configuración de tamaño o ruta");
-			$this->s_error_subida = "falta la configuración";
+			$this->s_error_subida = t("text_subida_config");
 			return false;
 		}//if
 		
@@ -534,7 +535,7 @@ class AdminHelper extends Page{
 		
 		if($s_nombre == "")
 		{
-			$this->s_error_subida = "nombre no válido";
+			$this->s_error_subida = t("text_subida_nombre");
 			return false;
 		}//if
 
@@ -556,7 +557,7 @@ class AdminHelper extends Page{
 		
 		if(!$img)
 		{
-			$this->s_error_subida = "el contenido no es una imagen admitida";
+			$this->s_error_subida = t("text_img_no_admitida");
 			return false;
 		}//if
 
@@ -574,7 +575,7 @@ class AdminHelper extends Page{
 		$thumb = imagecreatetruecolor($anchura,$altura);
 		if(!$thumb)
 		{
-			$this->s_error_subida = "no se pudo procesar la imagen";
+			$this->s_error_subida = t("text_img_proceso");
 			return false;
 		}//if
 		imagecopyresampled($thumb, $img, 0, 0, 0, 0, $anchura, $altura, $a_datos[0], $a_datos[1]);
@@ -620,7 +621,7 @@ class AdminHelper extends Page{
 		if(!$b_ok)
 		{
 			error_log("CFW: no se pudo escribir ".$s_ruta.$s_nombre);
-			$this->s_error_subida = "no se pudo guardar el archivo";
+			$this->s_error_subida = t("text_subida_guardar");
 			return false;
 		}//if
 		
@@ -656,20 +657,20 @@ class AdminHelper extends Page{
 		
 		if(!in_array($s_ext,$this->extensiones_permitidas))
 		{
-			$this->s_error_subida = "tipo de archivo no permitido";
+			$this->s_error_subida = t("text_subida_tipo");
 			return false;
 		}//if
 		
 		//Con una ruta vacía, file_get_contents lanza ValueError y @ no lo silencia.
 		if(!is_string($file_data["tmp_name"]) || $file_data["tmp_name"] == "")
 		{
-			$this->s_error_subida = "no se recibió el archivo";
+			$this->s_error_subida = t("text_subida_no_recibido");
 			return false;
 		}//if
 		
 		if(strpos((string)@file_get_contents($file_data["tmp_name"]),"<?") !== false)
 		{
-			$this->s_error_subida = "el contenido no está permitido";
+			$this->s_error_subida = t("text_subida_contenido");
 			return false;
 		}//if
 		
@@ -678,7 +679,7 @@ class AdminHelper extends Page{
 		
 		if($s_ruta == "" || $s_nombre == "")
 		{
-			$this->s_error_subida = "falta la configuración o el nombre no es válido";
+			$this->s_error_subida = t("text_subida_config_nombre");
 			return false;
 		}//if
 		
@@ -686,7 +687,7 @@ class AdminHelper extends Page{
 		if(!@copy($file_data["tmp_name"],$s_ruta.$s_nombre))
 		{
 			error_log("CFW: no se pudo escribir ".$s_ruta.$s_nombre);
-			$this->s_error_subida = "no se pudo guardar el archivo";
+			$this->s_error_subida = t("text_subida_guardar");
 			return false;
 		}//if
 		

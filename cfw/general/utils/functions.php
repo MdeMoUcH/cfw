@@ -82,6 +82,39 @@ function escapar($s)
 }//fun escapar
 
 
+//Traduce una clave de textos.ini. Los valores de $a_params deben llegar ya escapados.
+function t($s_clave, $a_params = array())
+{
+	static $a_avisadas = array();
+	
+	$a_textos = GestorIdiomas::textos("textos");
+	if(!isset($a_textos[$s_clave]))
+	{
+		if(!isset($a_avisadas[$s_clave]))
+		{
+			$a_avisadas[$s_clave] = true;
+			error_log("CFW: falta el texto de idioma: ".$s_clave);
+		}//if
+		return $s_clave;
+	}//if
+	
+	$a_cambios = array();
+	foreach($a_params as $s_nombre=>$valor)
+	{
+		$a_cambios["{".$s_nombre."}"] = (string)$valor;
+	}//foreach
+	
+	return strtr($a_textos[$s_clave], $a_cambios);
+}//fun t
+
+
+//Valor seguro para pintar dentro de un <script>.
+function json_js($valor)
+{
+	return json_encode($valor, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE);
+}//fun json_js
+
+
 function email_valido($s)
 {
 	$re = '#^[a-z0-9.!\#$%&\'*+-/=?^_`{|}~]+@([0-9.]+|([^\s]+\.+[a-z]{2,6}))(\.[a-z]{2,6})?$#si';
@@ -236,7 +269,7 @@ function format_fecha($fecha){
 	
 	$a_fecha = explode(' ',(string)$fecha);
 	
-	return 'El '.$a_fecha[0].' a las '.@$a_fecha[1];
+	return t('text_formato_fecha',array('fecha' => $a_fecha[0], 'hora' => (string)@$a_fecha[1]));
 	
 }
 

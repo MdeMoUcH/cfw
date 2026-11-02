@@ -1,22 +1,23 @@
 
-<h1>Cuenta Personal</h1>
+<h1>{text_cuenta_titulo}</h1>
 {content}
+{form_idioma}
 <hr/>
-<p>Si quieres cambiar alguno de tus datos, modifícalo en el siguiente formulario:</p>
+<p>{text_cuenta_intro}</p>
 <div style="width:90%;margin-left:60px;margin-top:20px;">
 	<form method="POST" name="formulariouser" id="formulariouser">
 		{content_user}
-		<p><b>E-mail:</b> <input type="text" value="{email}" name="email" id="email" /></p>
+		<p><b>{text_cuenta_email}</b> <input type="text" value="{email}" name="email" id="email" /></p>
 		<p>&nbsp;</p>
-		<p><b>Si no quieres cambiar tu contraseña no escribas nada en los siguientes campos:</b></p>
-		<p><b>Nueva contraseña:</b> <input type="password" name="pass1" id="pass1" /></p>
-		<p><b>Confirmar nueva contraseña:</b> <input type="password" name="pass2" id="pass2" /></p>
+		<p><b>{text_cuenta_aviso_pass}</b></p>
+		<p><b>{text_cuenta_pass_nueva}</b> <input type="password" name="pass1" id="pass1" /></p>
+		<p><b>{text_cuenta_pass_confirmar}</b> <input type="password" name="pass2" id="pass2" /></p>
 		<p>&nbsp;</p>
-		<p><b>Contraseña actual (obligatoria para guardar):</b> <input type="password" name="pass_actual" id="pass_actual" /></p>
+		<p><b>{text_cuenta_pass_actual}</b> <input type="password" name="pass_actual" id="pass_actual" /></p>
 		
 		<br/><input type="hidden" value="edituser" name="save" id="save" />
 		<input type="hidden" value="{csrf}" name="csrf" />
-		<input style='width:60%;margin-top:32px;' type="submit" class="button" value="Guardar Datos Personales" name="button" id="button" />
+		<input style='width:60%;margin-top:32px;' type="submit" class="button" value="{text_cuenta_guardar}" name="button" id="button" />
 	</form>
 </div>
 

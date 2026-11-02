@@ -12,6 +12,23 @@ Framework PHP
 3. Revisa `cfw/config.ini`. El archivo está versionado: pon los datos reales solo en el servidor y no los subas al repositorio. `desarrollo = true` muestra errores y detalles; no lo actives en un servidor público.
 4. Usa siempre HTTPS. El framework no lo fuerza.
 
+## Idiomas
+Los textos están en `cfw/general/lang/<código>/` (`textos.ini` y un `.ini` por plantilla). Los de `cfw/specific/lang/<código>/` tienen prioridad, clave a clave.
+
+La opción de multiidioma se gestiona en `/admin/idiomas` y se guarda en `cfw/general/lang/idiomas.ini`, que no se versiona. Con ella activa, cada usuario elige su idioma en `cuenta` y los visitantes anónimos reciben el de `Accept-Language`, entre los activos. Si no, todo sale en `lang_default`, que siempre está activo.
+
+Antes de usarla, crea el fichero y deja la carpeta sin escritura para Apache:
+```
+install -o <deploy> -g www-data -m 660 /dev/null cfw/general/lang/idiomas.ini
+chmod 755 cfw/general/lang
+```
+- Apache no debe ser propietario de `cfw/general/lang/` ni tener escritura sobre ella, tampoco de grupo o recursiva. Los textos se pintan sin escapar: quien pueda escribir ahí puede inyectar código en todo el sitio, incluida la administración.
+- Conserva el fichero entre despliegues. Un `rsync --delete` o un `git clean -X` lo borran y el multiidioma se desactiva sin avisar.
+- La escritura no es atómica: un fallo a mitad deja el multiidioma desactivado hasta volver a guardar.
+- Con varios servidores, el fichero no se comparte entre ellos.
+
+Para añadir un idioma, crea `cfw/general/lang/<código>/textos.ini`, con un código de dos letras minúsculas y `nombre_idioma`; las claves que falten salen en `lang_default`. Los valores van entre comillas dobles y no pueden contener comillas dobles. Si el valor lleva HTML o datos, escápalos antes de pasarlos a `t()`.
+
 ## Riesgo conocido: md5
 Las contraseñas se guardan en md5 sin sal, y el login las envía ya en md5 desde el navegador. Por eso el hash almacenado equivale a la contraseña: quien lea la base de datos puede entrar sin descifrarlo. `cuenta` y `users` envían la contraseña en claro y calculan el md5 en el servidor; ambas vías guardan el mismo valor. Hay que migrar a `password_hash` antes de usarlo con datos reales.
 
@@ -25,7 +42,13 @@ Las contraseñas se guardan en md5 sin sal, y el login las envía ya en md5 desd
 - Se eliminan `comprobarInvitado`, `getLastUserByFkIdUsuario` y `getUsersByFkIdUsuario` de `Usuarios`.
 - Los valores con `'` se guardan como `&#039;`. Escapa la salida con `escapar()`, que no codifica dos veces.
 - `get_ip` usa solo `REMOTE_ADDR` y deja de usar `X-Forwarded-For`.
-- Un `main.ini` en `cfw/specific/lang/` sustituye al general: tiene que incluir `text_error_usuario_mail`.
+- Los `.ini` de idioma se fusionan por clave: `general` y `specific` de `lang_default`, y encima los del idioma actual. Un `specific/lang/<default>` ya no gana a `general/lang/<idioma>` entero, solo aporta sus claves. `text_error_usuario_mail` pasa a `textos.ini`.
+- `get_array_text` y `cfw/general/lang/es/menu.php` ya no se usan, aunque el fichero sigue en el árbol. Ya no se carga PHP desde `lang/`: un `menu.php` propio deja de aplicarse. El menú usa `{text_menu_inicio}` y `{text_menu_login}`.
+- `cfw/specific/lang/{es,en}/main.ini` siguen en el árbol y tienen prioridad sobre `general` en su idioma: cambiar `titulo` o `mensaje` en `cfw/general/lang/<código>/main.ini` no tiene efecto mientras existan esas claves en `specific`.
+- Los `.ini` de idioma se leen con `INI_SCANNER_RAW`. Un fichero con una comilla sin cerrar o una línea sin clave se ignora y deja una línea `CFW:` en el log.
+- `langs` de `config.ini` queda sin uso.
+- `t()` es global: una función `t` en `cfw/specific/utils/functions.php` da un fatal.
+- `titulo` y `singular` de las subclases de `AdminHelper` no se traducen solos: los define cada sitio.
 - PHP 8.2 da `Deprecated` con las propiedades dinámicas: las subclases de `cfw/specific/` deben declarar las suyas, con una visibilidad compatible con la del padre. `private` da un fatal, y `protected` también si el padre la declara `public`, como `$tabla` en `Orm` o `$vars` en `Page`.
 - Se eliminan la función global `saveImage` y `cfw/general/utils/images.php` (`saveImageProductos`). Usa `AdminHelper::saveImage`.
 - `index.php` solo despacha clases que hereden de `Page`. Las demás dan 404, también las de `cfw/specific/pages/`.

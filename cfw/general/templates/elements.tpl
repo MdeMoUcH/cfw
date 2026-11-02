@@ -5,5 +5,5 @@
 	<p>{content}</p>
 	<br/>
 	<hr/>
-	<a href="{urlbase}admin/">admin</a>&nbsp;|&nbsp;<a href="{urlbase}admin/{slug}">lista</a>&nbsp;|&nbsp;<a href="{urlbase}admin/{slug}/form">nuevo</a>
+	<a href="{urlbase}admin/">{text_enlace_admin}</a>&nbsp;|&nbsp;<a href="{urlbase}admin/{slug}">{text_enlace_lista}</a>&nbsp;|&nbsp;<a href="{urlbase}admin/{slug}/form">{text_enlace_nuevo}</a>
 </div>

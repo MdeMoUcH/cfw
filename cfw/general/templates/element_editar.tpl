@@ -1,1 +1,1 @@
-<a href="{urlbase}admin/{slug}/edit/{id}">Editar</a>
+<a href="{urlbase}admin/{slug}/edit/{id}">{text_editar}</a>

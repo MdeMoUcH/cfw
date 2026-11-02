@@ -1,4 +1,4 @@
-<html>
+<html lang="{lang_actual}">
 
 <head>
 	<title>{page_title} | {app_name}</title>
