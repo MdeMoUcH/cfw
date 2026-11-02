@@ -1,59 +1,24 @@
 /*** CFW ***/
 
 var text_rellena_ambos_campos = "Rellena ambos campos.";
-var text_aceptar_terminos = "Tienes que aceptar las condiciones.";
-var text_email_incorrecto = "El email no es correcto.";
-var text_contrasenas_iguales = "Las contraseñas tienen que ser iguales.";
-var text_rellena_campos_obligatorios = "Rellena todos los campos obligatorios.";
-var text_algun_error = "Ha habido algún error.";
-var text_salir = "¿Seguro que quieres salir?";
+var b_login_enviado = false;
 
 
 function sendLoginForm(){
+	if(b_login_enviado){
+		return;
+	}
 	if($("#nick").val() != "" && $("#pass").val() != ""){
-		$("#pass").val(md5($("#pass").val()));
-		$("#timezone").val(Intl.DateTimeFormat().resolvedOptions().timeZone);
-		$("#formulario").submit();
+		var o_hash = $("#pass_md5");
+		if(o_hash.length == 0){
+			o_hash = $("<input>",{type:"hidden",id:"pass_md5",name:"pass"}).appendTo("#formulario");
+		}
+		o_hash.val(md5($("#pass").val()));
+		$("#pass").removeAttr("name");
+		b_login_enviado = true;
+		$("#formulario").trigger("submit");
 	}else{
 		devolver_mensaje("<p style='color:Red;'>"+text_rellena_ambos_campos+"</p>");
-	}
-}
-
-
-
-function sendRegisterForm(){
-	//&& $("#cif").val() != ""
-	//&& $("#dni").val() != ""
-	if($("#email").val() != "" && $("#pass").val() != "" && $("#razon_social").val() != ""  && $("#direccion").val() != "" && $("#cp").val() != "" && $("#ciudad").val() != "" && $("#fk_pais").val() != 0 && $("#nombre").val() != "" && $("#apellidos").val() != "" && $("#telefono_empresa").val() != ""){
-		if($("#confirm_pass").val() == $("#pass").val() && $("#pass").val() != ""){
-			if(comprobar_mail($("#email").val())){
-				if($("#aceptar_condiciones").is(":checked")){
-					$("#pass").val(md5($("#pass").val()));
-					$("#confirm_pass").val(md5($("#confirm_pass").val()));
-					$("#formulario").submit();
-				}else{
-					devolver_mensaje("<p style='color:Red;'>"+text_aceptar_terminos+"</p>");
-				}
-				
-			}else{
-				devolver_mensaje("<p style='color:Red;'>"+text_email_incorrecto+"</p>");
-			}
-		}else{
-			devolver_mensaje("<p style='color:Red;'>"+text_contrasenas_iguales+"</p>");
-		}
-	}else{
-		devolver_mensaje("<p style='color:Red;'>"+text_rellena_campos_obligatorios+"</p>");
-	}
-}
-
-
-
-function comprobar_mail(s_mail){
-	var filter = /[\w-\.]{1,}@([\w-]{1,}\.)*([\w-]{1,}\.)[\w-]{2,4}/;
-	if(filter.test(s_mail)){
-		return true;
-	}else{
-		return false;
 	}
 }
 
@@ -67,34 +32,19 @@ function devolver_mensaje(s_mensaje){
 
 
 
-function sendAForm(s_form){
-	$(s_form).submit();
-}
+$(function(){
+	$("#nick, #pass").on("keydown",function(e){
+		if(e.key === "Enter"){
+			e.preventDefault();
+			sendLoginForm();
+		}
+	});
+});
 
 
 
-function muestraError(){
-	alert(text_algun_error);
-}
-
-
-
-function salir(){
-	if(confirm(text_salir)){
-		window.location = "/login/logout/";
+$(window).on("pageshow",function(e){
+	if(e.originalEvent.persisted){
+		b_login_enviado = false;
 	}
-}
-
-
-
-function sendFormUser(){
-	if($('#pass1').val() != ''){
-		$('#pass1').val(md5($('#pass1').val()));
-	}
-	if($('#pass2').val() != ''){
-		$('#pass2').val(md5($('#pass2').val()));
-	}
-	$('#formulariouser').submit();
-}
-
-
+});

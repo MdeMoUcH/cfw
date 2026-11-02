@@ -12,7 +12,6 @@ class AdminHelper extends Page{
 	
 	public $last_file_name = "";
 	protected $slug = "admin";
-	protected $jhtmlarea = false;
 	protected $extensiones_permitidas = array("tpl","css");
 	protected $s_error_subida = "";
 	protected $a_subidas_guardadas = array();
@@ -92,8 +91,7 @@ class AdminHelper extends Page{
 			$tpl_aux->vars["elementos"] = $tpl->vars["content"];
 			$tpl->vars["content"] = $tpl_aux->get();
 			
-			$this->add_include("js",$this->config["urlbase"]."js/prototype.js");
-			//$this->add_include("js",$this->config["urlbase"]."js/fabtabulous.js");
+			$this->add_include("js",$this->config["urlbase"]."js/prototype-1.7.3.js");
 			$this->add_include("js",$this->config["urlbase"]."js/tablekit.js");
 		}else{
 			$tpl->vars["content"] = $this->titulo;
@@ -151,8 +149,6 @@ class AdminHelper extends Page{
 
 
 	public function form($save = "", $id = "",$s_msg = "", $a_buttons = array()){
-		
-		//$this->add_include("js",$this->config["urlbase"]."js/color/jscolor.js");
 		
 		$b_insert_error = false;
 		
@@ -293,8 +289,6 @@ class AdminHelper extends Page{
 	
 	public function edit($id, $save = "", $a_buttons = array()){
 		
-		//$this->add_include("js",$this->config["urlbase"]."js/color/jscolor.js");
-		
 		$s_msg = "";
 		if($save != "" && @$_SERVER["REQUEST_METHOD"] === "POST"){
 			$orm = new $this->class();
@@ -387,14 +381,8 @@ class AdminHelper extends Page{
 			file_exists($this->config["pathbase"]."cfw/specific/templates/".$this->template.".tpl")){
 			$tpl = new Template($this->template);
 		}else{
-			if($this->jhtmlarea){
-				$tpl = new Template("elements_html");
-				$this->add_include("js",$this->config["urlbase"]."js/jHtmlArea-0.7.5.min.js");
-				$this->add_include("css",$this->config["urlbase"]."css/jHtmlArea.css");
-			}else{
-				$tpl = new Template("elements");
-			}
-		}	
+			$tpl = new Template("elements");
+		}
 		return $tpl;
 	}
 	

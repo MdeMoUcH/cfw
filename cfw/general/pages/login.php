@@ -17,8 +17,8 @@ class login extends Page{
 	
 	
 	function init(){
-		$this->add_include("js",$this->config["urlbase"]."js/jquery-1.7.1.min.js");
-		$this->add_include("js",$this->config["urlbase"]."js/md5.js");
+		$this->add_include("js",$this->config["urlbase"]."js/jquery-4.0.0.min.js");
+		$this->add_include("js",$this->config["urlbase"]."js/js-md5-0.9.2.min.js");
 		$this->add_include("js",$this->config["urlbase"]."js/main.js");
 		
 		$s_msg = "";

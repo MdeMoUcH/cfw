@@ -31,3 +31,9 @@ Las contraseñas se guardan en md5 sin sal, y el login las envía ya en md5 desd
 - `index.php` solo despacha clases que hereden de `Page`. Las demás dan 404, también las de `cfw/specific/pages/`.
 - `main` solo pinta las plantillas de `$a_plantillas_permitidas`. Una subclase de `cfw/specific/` que use otras debe ampliar esa propiedad.
 - En `AdminHelper::form`, una subida fallida deshace el alta con un `DELETE` físico (`Orm::eliminarFila`), y `guardarSubidas` devuelve `bool`.
+- El login usa jQuery 4.0.0 y js-md5 0.9.2 (`js/jquery-4.0.0.min.js`, `js/js-md5-0.9.2.min.js`), y el listado de `AdminHelper`, Prototype 1.7.3 (`js/prototype-1.7.3.js`) con TableKit 1.3b. Prototype 1.7.3 lleva el aviso CVE-2020-27511 (ReDoS en `stripTags` y `unescapeHTML`), sin parche: no pases datos de usuario a esas funciones.
+- jQuery y Prototype no deben cargarse en la misma página.
+- Se retira jHtmlArea: desaparecen `$jhtmlarea` de `AdminHelper` y la plantilla `elements_html`.
+- `main.js` solo conserva `sendLoginForm` y `devolver_mensaje`. Se eliminan `sendRegisterForm`, `comprobar_mail`, `sendAForm`, `muestraError`, `salir`, `sendFormUser` y los textos que usaban.
+- El md5 del login ahora coincide con el de PHP también en contraseñas con emoji, que antes no podían iniciar sesión.
+- Si activas la edición en línea de TableKit, configura `TableKit.options.editAjaxURI` y añade el `csrf` al POST: hoy no lo envía y la respuesta sería 403.
