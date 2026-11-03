@@ -280,6 +280,21 @@ class Form //extends App
 			case "fecha":
 					$class = "datepicker";
 				break;
+			case "password_cifrado":
+					//Sin name ni value: lo envía cifrado js/cifrado.js (Page::prepararCifrado).
+					$tpl = new Template("html/form_row");
+					$tpl->vars["title"] = $title;
+					$tplinput = new Template("html/input_cifrado");
+					$tplinput->vars["name"] = escapar($name);
+					$tplinput->vars["class"] = "";
+					if($class != ""){
+						$tplclass = new Template("html/class");
+						$tplclass->vars["class"] = $class;
+						$tplinput->vars["class"] = $tplclass->get();
+					}
+					$tpl->vars["input"] = $tplinput->get();
+					return $tpl->get();
+				break;
 		}
 		
 		$tpl = new Template("html/form_row".$row_type);

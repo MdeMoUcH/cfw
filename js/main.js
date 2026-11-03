@@ -8,14 +8,8 @@ function sendLoginForm(){
 		return;
 	}
 	if($("#nick").val() != "" && $("#pass").val() != ""){
-		var o_hash = $("#pass_md5");
-		if(o_hash.length == 0){
-			o_hash = $("<input>",{type:"hidden",id:"pass_md5",name:"pass"}).appendTo("#formulario");
-		}
-		o_hash.val(md5($("#pass").val()));
-		$("#pass").removeAttr("name");
-		b_login_enviado = true;
-		$("#formulario").trigger("submit");
+		//La contraseña sale cifrada (js/cifrado.js); si no se puede, no se envía.
+		b_login_enviado = cfwEnviarCifrado(document.getElementById("formulario"));
 	}else{
 		devolver_mensaje("<p style='color:Red;'>"+text_rellena_ambos_campos+"</p>");
 	}

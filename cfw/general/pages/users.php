@@ -90,19 +90,37 @@ class users extends Page{
 		$tplmsg = new Template("html/p_color");
 		
 		$a_datos = $this->datosFormulario();
-		$s_pass = isset($a_datos["pass"]) ? $a_datos["pass"] : "";
-		$s_pass_confirm = is_string(@$_POST["pass_confirm"]) ? $_POST["pass_confirm"] : "";
+		//Al ORM solo llega el hash, nunca el texto cifrado.
+		unset($a_datos["pass"]);
 		$b_guardar = $save != "" && @$_SERVER["REQUEST_METHOD"] === "POST";
+		$b_cifrado = Cifrado::clavePublica() !== false;
+		$a_pass = $b_guardar ? $this->leerPassCifradas(array("pass","pass_confirm")) : false;
+		$s_pass = $a_pass ? $a_pass["pass"] : "";
+		$s_pass_confirm = $a_pass ? $a_pass["pass_confirm"] : "";
 		
-		if($b_guardar && $s_pass === $s_pass_confirm){
+		if($b_guardar && $a_pass === false){
+			$b_insert_error = true;
+			$tplmsg->vars["color"] = "Red";
+			$tplmsg->vars["text"] = $this->textoFalloCifrado();
+			$s_msg = $tplmsg->get();
+		}elseif($b_guardar && !$b_cifrado){
+			//El alta exige contraseña y sin clave no puede llegar: el aviso de prepararCifrado lo explica.
+			$b_insert_error = true;
+		}elseif($b_guardar && $s_pass === $s_pass_confirm){
 			if($s_pass != ""){
-				$a_datos["pass"] = md5($s_pass);
+				$a_datos["pass"] = pass_hash($s_pass);
 			}
 			
 			if($s_pass == "" || !email_valido(@$a_datos["email"])){
 				$b_insert_error = true;
 				$tplmsg->vars["color"] = "Red";
 				$tplmsg->vars["text"] = t("text_users_email_pass");
+				
+				$s_msg = $tplmsg->get();
+			}elseif($a_datos["pass"] === false){
+				$b_insert_error = true;
+				$tplmsg->vars["color"] = "Red";
+				$tplmsg->vars["text"] = t("text_pass_no_valida");
 				
 				$s_msg = $tplmsg->get();
 			}elseif($this->hayArchivoEnviado()){
@@ -136,8 +154,10 @@ class users extends Page{
 		
 		$s_action = "form/save";
 		$a_values = array();
+		$b_edicion = false;
 		if($id != ""){
 			if($orm->getByIdAdmin($id)){
+				$b_edicion = true;
 				$a_values = $orm->resultado[0];
 				$orm->campos_form["id"] = array("title" => "","name" => "id","type" => "hidden");
 				$orm->campos_form["borrado"] = array("title" => t("text_campo_borrado"),"name" => "borrado","type" => "radio", "opciones" => array(t("text_si") => "1", t("text_no") => "0"));
@@ -148,6 +168,11 @@ class users extends Page{
 		}
 		
 		$orm->cerrar();
+		
+		//Sin clave: el alta no se pinta y la edición, sin contraseña, para que no se escriba una que no se guardaría.
+		if(!$b_cifrado){
+			unset($orm->campos_form["pass"], $orm->campos_form["pass_confirm"]);
+		}
 		
 		$form = new Form();
 		
@@ -164,7 +189,7 @@ class users extends Page{
 		$tpl->vars["urlbase"] = $this->config["urlbase"];
 		$tpl->vars["titulo"] = t("text_titulo_form",array("titulo" => $this->titulo));
 		
-		$tpl->vars["content"] = $s_msg.$form->getForm();
+		$tpl->vars["content"] = $s_msg.$this->prepararCifrado().(($b_cifrado || $b_edicion) ? $form->getForm() : "");
 			
 		$this->show($tpl);
 	}
@@ -178,16 +203,24 @@ class users extends Page{
 			$orm = new $this->class();
 			$tplmsg = new Template("html/p_color");
 			$a_datos = $this->datosFormulario();
-			$s_pass = isset($a_datos["pass"]) ? $a_datos["pass"] : "";
-			$s_pass_confirm = is_string(@$_POST["pass_confirm"]) ? $_POST["pass_confirm"] : "";
+			//Al ORM solo llega el hash, nunca el texto cifrado.
 			unset($a_datos["pass"]);
+			$a_pass = $this->leerPassCifradas(array("pass","pass_confirm"));
+			$s_pass = $a_pass ? $a_pass["pass"] : "";
+			$s_pass_confirm = $a_pass ? $a_pass["pass_confirm"] : "";
 			if($s_pass != ""){
-				$a_datos["pass"] = md5($s_pass);
+				$a_datos["pass"] = pass_hash($s_pass);
 			}
 			
 			$tplmsg->vars["color"] = "Red";
-			if($s_pass !== $s_pass_confirm){
+			if($a_pass === false){
+				$tplmsg->vars["text"] = $this->textoFalloCifrado();
+				$s_msg = $tplmsg->get();
+			}elseif($s_pass !== $s_pass_confirm){
 				$tplmsg->vars["text"] = t("text_pass_distintas");
+				$s_msg = $tplmsg->get();
+			}elseif($s_pass != "" && $a_datos["pass"] === false){
+				$tplmsg->vars["text"] = t("text_pass_no_valida");
 				$s_msg = $tplmsg->get();
 			}elseif(!email_valido(@$a_datos["email"])){
 				$tplmsg->vars["text"] = t("text_email_incorrecto");

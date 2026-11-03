@@ -360,13 +360,9 @@ class AdminHelper extends Page{
 		$orm = new $this->class();
 		$valor = @$_POST["value"];
 		$s_salida = $valor;
-		//Igual que users: la contraseña nunca en claro, ni vacía, ni devuelta en la respuesta.
+		//La contraseña solo se cambia desde un formulario que la envíe cifrada (Page::leerPassCifradas); TableKit no puede.
 		if(@$_POST["field"] === "pass"){
-			if(!is_string($valor) || $valor === ""){
-				die(t("text_hubo_error"));
-			}
-			$valor = md5($valor);
-			$s_salida = "";
+			die(t("text_hubo_error"));
 		}
 		if($orm->updateField(@$_POST["id"],@$_POST["field"],$valor)){
 			die(escapar($s_salida));

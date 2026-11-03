@@ -25,7 +25,7 @@ if(file_exists($s_path.'specific/utils/mpdf/mpdf.php')){
 	require_once($s_path.'specific/utils/mpdf/mpdf.php');
 }//if*/
 
-$a_clases = array('AppConf','App','Msession','GestorIdiomas','Bbdd','Template','Page',
+$a_clases = array('AppConf','App','Msession','Cifrado','GestorIdiomas','Bbdd','Template','Page',
 				'Error','Orm','Form','AdminHelper');
 
 $a_orms = array('Usuarios','DinamicOrm');

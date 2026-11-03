@@ -39,11 +39,11 @@ class Usuarios extends Orm
 								"pass" => array(
 									"title" => t("text_campo_pass"),
 									"name" => "pass",
-									"type" => "password"),
+									"type" => "password_cifrado"),
 								"pass_confirm" => array(
 									"title" => t("text_campo_pass_confirm"),
 									"name" => "pass_confirm",
-									"type" => "password"),
+									"type" => "password_cifrado"),
 								"idioma" => array(
 									"title" => t("text_campo_idioma"),
 									"name" => "fk_idioma",
@@ -76,10 +76,53 @@ class Usuarios extends Orm
 	}//constructor
 
 
+	//Recibe la contraseña real. Los md5 heredados se aceptan y se convierten a password_hash en el primer login correcto.
 	function comprobarUserPass($user, $pass){
-		$s_sql = "SELECT * FROM ".$this->tabla." WHERE email = '".$this->filtro($user)."' AND pass <> '' AND pass = '".$this->filtro($pass)."' AND activo = 1 AND borrado = 0;";
-		
-		return $this->ejecutarConsulta($s_sql);
+		$s_sql = "SELECT * FROM ".$this->tabla." WHERE email = '".$this->filtro($user)."' AND pass <> '' AND activo = 1 AND borrado = 0;";
+
+		$i_errores = count($this->errores);
+		$this->ejecutarConsulta($s_sql);
+		$a_filas = $this->resultado;
+		$this->resultado = array();
+
+		if(count($a_filas) < 1){
+			if(count($this->errores) == $i_errores){
+				//Mismo coste que un login real en cualquier versión: no revela qué emails existen.
+				password_hash("cfw-ficticia", PASSWORD_DEFAULT);
+			}
+			return false;
+		}
+		if(!is_string($pass)){
+			return false;
+		}
+
+		//Sin UNIQUE en email: se prueban todas las filas.
+		foreach($a_filas as $a_fila){
+			$s_guardado = (string)$a_fila["pass"];
+			$b_md5 = preg_match('/^[0-9a-f]{32}$/iD', $s_guardado) === 1;
+			$b_ok = $b_md5 ? hash_equals(strtolower($s_guardado), md5($pass)) : password_verify($pass, $s_guardado);
+			if(!$b_ok){
+				if($b_md5){
+					//Mismo coste que bcrypt: que no se distingan por tiempo las cuentas aún en md5.
+					password_hash("cfw-ficticia", PASSWORD_DEFAULT);
+				}
+				continue;
+			}
+
+			//Un fallo al rehashear no impide entrar ni deja errores: quien llama los toma como fallo de la BD.
+			if(($b_md5 || password_needs_rehash($s_guardado, PASSWORD_DEFAULT)) && pass_valida($pass)){
+				$i_antes = count($this->errores);
+				if(!$this->updateField($a_fila["id"], "pass", pass_hash($pass))){
+					error_log("CFW: no se pudo actualizar el hash de la contraseña del usuario ".$a_fila["id"]);
+					array_splice($this->errores, $i_antes);
+				}
+			}
+
+			$this->resultado = array($a_fila);
+			return true;
+		}
+
+		return false;
 	}
 	
 	

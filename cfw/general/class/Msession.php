@@ -81,6 +81,47 @@ class Msession extends AppConf
     }//fun
     
 
+    //Un nonce por formulario con contraseñas: el texto cifrado no se puede reenviar.
+    function nuevoNonce()
+    {
+        $s_nonce = bin2hex(random_bytes(16));
+        $a_nonces = (isset($this->data["nonces"]) && is_array($this->data["nonces"])) ? $this->data["nonces"] : array();
+        $a_nonces[$s_nonce] = time();
+        
+        $this->data["nonces"] = array_slice($a_nonces, -20, null, true);
+        $this->actualiza();
+        
+        return $s_nonce;
+    }//fun
+    
+    
+    //Válido o no, se gasta, y con él los caducados.
+    function consumirNonce($s_nonce)
+    {
+        $a_nonces = (isset($this->data["nonces"]) && is_array($this->data["nonces"])) ? $this->data["nonces"] : array();
+        $i_ahora = time();
+        
+        $b_valido = is_string($s_nonce) && isset($a_nonces[$s_nonce]) && $i_ahora - $a_nonces[$s_nonce] < 1800;
+        if(is_string($s_nonce))
+        {
+            unset($a_nonces[$s_nonce]);
+        }//if
+        
+        foreach($a_nonces as $s_clave=>$i_tiempo)
+        {
+            if($i_ahora - $i_tiempo >= 1800)
+            {
+                unset($a_nonces[$s_clave]);
+            }//if
+        }//foreach
+        
+        $this->data["nonces"] = $a_nonces;
+        $this->actualiza();
+        
+        return $b_valido;
+    }//fun
+    
+    
     function isUserAdmin()
     {
         if($this->data["logueado"] != "" && $this->data["admin"])

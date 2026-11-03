@@ -13,6 +13,8 @@
 class Page extends App
 {
 	public $vars;
+	//Motivo del último fallo de leerPassCifradas: "clave" (del servidor) o "dato" (caducado, repetido o manipulado).
+	protected $s_fallo_cifrado = "";
 	
 	function __construct()
 	{
@@ -111,6 +113,103 @@ class Page extends App
 		$tpl->vars["text"] = t($a_flash["clave"]);
 		return $tpl->get();
 	}//fun leerFlash
+	
+	
+	//Para los formularios con campos password_cifrado. Devuelve el aviso que se pinta junto al formulario.
+	protected function prepararCifrado()
+	{
+		$tpl = new Template("html/p_color");
+		$tpl->vars["color"] = "Red";
+		
+		$s_publica = Cifrado::clavePublica();
+		if($s_publica === false)
+		{
+			$tpl->vars["text"] = t("text_cifrado_no_disponible");
+			return $tpl->get();
+		}//if
+		
+		$a_vars = array("cfw_clave_publica" => $s_publica,
+						"cfw_nonce" => $this->session->nuevoNonce(),
+						"cfw_textos_cifrado" => array("no_disponible" => t("text_cifrado_no_disponible"), "pass_no_valida" => t("text_pass_no_valida")));
+		foreach($a_vars as $s_nombre=>$valor)
+		{
+			$tpljs = new Template("html/js_var");
+			$tpljs->vars["nombre"] = $s_nombre;
+			$tpljs->vars["valor"] = json_js($valor);
+			$this->vars["js"] .= $tpljs->get();
+		}//foreach
+		$this->add_include("js",$this->config["urlbase"]."js/forge-1.4.2.min.js");
+		$this->add_include("js",$this->config["urlbase"]."js/cifrado.js");
+		
+		$tpl->vars["text"] = t("text_requiere_javascript");
+		return "<noscript>".$tpl->get()."</noscript>";
+	}//fun prepararCifrado
+	
+	
+	//Devuelve campo => contraseña, con "" en los que llegan vacíos, o false. El nonce se gasta una vez por petición.
+	protected function leerPassCifradas($a_campos)
+	{
+		$this->s_fallo_cifrado = "";
+		$a_pass = array();
+		$b_hay = false;
+		foreach($a_campos as $s_campo)
+		{
+			$a_pass[$s_campo] = "";
+			if(isset($_POST[$s_campo]) && $_POST[$s_campo] !== "")
+			{
+				$b_hay = true;
+			}//if
+		}//foreach
+		
+		if(!$b_hay)
+		{
+			return $a_pass;
+		}//if
+		
+		if(!Cifrado::clavePrivada())
+		{
+			$this->s_fallo_cifrado = "clave";
+			return false;
+		}//if
+		
+		$b_ok = true;
+		$s_nonce = null;
+		foreach($a_campos as $s_campo)
+		{
+			$valor = isset($_POST[$s_campo]) ? $_POST[$s_campo] : "";
+			if($valor === "")
+			{
+				continue;
+			}//if
+		
+			$s_claro = Cifrado::descifrar($valor);
+			$a_partes = is_string($s_claro) ? explode("|",$s_claro,4) : array();
+			if(count($a_partes) !== 4 || $a_partes[0] !== "1" || $a_partes[2] !== $s_campo || ($s_nonce !== null && $a_partes[1] !== $s_nonce))
+			{
+				$b_ok = false;
+				continue;
+			}//if
+		
+			$s_nonce = $a_partes[1];
+			$a_pass[$s_campo] = $a_partes[3];
+		}//foreach
+		
+		$b_nonce = $s_nonce !== null && $this->session->consumirNonce($s_nonce);
+		if(!$b_ok || !$b_nonce)
+		{
+			$this->s_fallo_cifrado = "dato";
+			return false;
+		}//if
+		
+		return $a_pass;
+	}//fun leerPassCifradas
+	
+	
+	//Mensaje para un fallo de leerPassCifradas.
+	protected function textoFalloCifrado()
+	{
+		return t($this->s_fallo_cifrado === "clave" ? "text_problema_reintentar" : "text_formulario_caducado");
+	}//fun textoFalloCifrado
 	
 	
 	function set_vars($vars)

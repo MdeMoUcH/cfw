@@ -15,6 +15,8 @@ CREATE TABLE `usuarios` (
 ) ENGINE=MyISAM AUTO_INCREMENT=0 DEFAULT CHARSET=utf8;
 
 
-/* Primer administrador: cambia el email y la contraseña antes de ejecutarlo.
-INSERT INTO `usuarios` (id,fk_tipo_usuario,email,pass,activo) VALUES (1,1,'admin@example.com',MD5('CAMBIA_ESTA_CONTRASENA'),1);
+/* Primer administrador: cambia el email y sustituye HASH_DE_TU_CONTRASENA por la salida de
+php -r 'echo password_hash("TU_CONTRASENA", PASSWORD_DEFAULT), "\n";'
+Un MD5('...') también entra y se convierte a password_hash en el primer login, pero no se recomienda.
+INSERT INTO `usuarios` (id,fk_tipo_usuario,email,pass,activo) VALUES (1,1,'admin@example.com','HASH_DE_TU_CONTRASENA',1);
 */

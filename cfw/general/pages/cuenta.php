@@ -35,21 +35,28 @@ class cuenta extends Page{
 			$tpl->vars["content"] = $this->guardarIdioma($ormuser);
 		}
 		
-		if(@$_POST["save"] == "edituser"){
+		//Sin clave no se puede comprobar la contraseña actual: no se guarda nada y prepararCifrado pinta el aviso.
+		$b_cifrado = Cifrado::clavePublica() !== false;
+		if(@$_POST["save"] == "edituser" && $b_cifrado){
 			$tplaux = new Template("html/p_color");
 			$tplaux->vars["color"] = "Red";
-			$s_pass1 = is_string(@$_POST["pass1"]) ? $_POST["pass1"] : "";
-			$s_pass2 = is_string(@$_POST["pass2"]) ? $_POST["pass2"] : "";
-			$s_pass_actual = is_string(@$_POST["pass_actual"]) ? $_POST["pass_actual"] : "";
-			if(email_valido(@$_POST["email"])){
+			$a_pass = $this->leerPassCifradas(array("pass1","pass2","pass_actual"));
+			$s_pass1 = $a_pass ? $a_pass["pass1"] : "";
+			$s_pass2 = $a_pass ? $a_pass["pass2"] : "";
+			$s_pass_actual = $a_pass ? $a_pass["pass_actual"] : "";
+			if($a_pass === false){
+				$tplaux->vars["text"] = $this->textoFalloCifrado();
+			}elseif(email_valido(@$_POST["email"])){
 				if($s_pass1 === $s_pass2){
 					//El email guardado ya pasó por filtro(): se decodifica para que no se codifique dos veces.
-					if($s_pass_actual != "" && $ormuser->comprobarUserPass(html_entity_decode($s_email_actual,ENT_QUOTES,"UTF-8"),md5($s_pass_actual))){
+					if($s_pass_actual != "" && $ormuser->comprobarUserPass(html_entity_decode($s_email_actual,ENT_QUOTES,"UTF-8"),$s_pass_actual)){
 						$a_data = array("email" => $_POST["email"]);
 						if($s_pass1 != ""){
-							$a_data["pass"] = md5($s_pass1);
+							$a_data["pass"] = pass_hash($s_pass1);
 						}
-						if($ormuser->update($a_data,$this->session->data["id_usuario"])){
+						if($s_pass1 != "" && $a_data["pass"] === false){
+							$tplaux->vars["text"] = t("text_pass_no_valida");
+						}elseif($ormuser->update($a_data,$this->session->data["id_usuario"])){
 							$tplaux->vars["color"] = "Green";
 							$tplaux->vars["text"] = t("text_cuenta_ok");
 							$tpl->vars["email"] = escapar($_POST["email"]);
@@ -72,6 +79,13 @@ class cuenta extends Page{
 		}
 		
 		$tpl->vars["form_idioma"] = $this->formularioIdioma();
+		$tpl->vars["aviso_cifrado"] = $this->prepararCifrado();
+		$tpl->vars["form_usuario"] = "";
+		if($b_cifrado){
+			$tplusuario = new Template("web/cuenta_usuario");
+			$tplusuario->vars["email"] = $tpl->vars["email"];
+			$tpl->vars["form_usuario"] = $tplusuario->get();
+		}
 		
 		$this->show($tpl);
 	}

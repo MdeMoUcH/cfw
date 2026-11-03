@@ -18,12 +18,11 @@ class login extends Page{
 	
 	function init(){
 		$this->add_include("js",$this->config["urlbase"]."js/jquery-4.0.0.min.js");
-		$this->add_include("js",$this->config["urlbase"]."js/js-md5-0.9.2.min.js");
 		$tpljs = new Template("html/js_var");
 		$tpljs->vars["nombre"] = "text_rellena_ambos_campos";
 		$tpljs->vars["valor"] = json_js(t("text_rellena_ambos_campos"));
 		$this->vars["js"] .= $tpljs->get();
-		$this->add_include("js",$this->config["urlbase"]."js/main.js");
+		$this->add_include("js",$this->config["urlbase"]."js/main.js?v=2");
 		
 		$s_msg = "";
 		$b_logueado = false;
@@ -47,27 +46,33 @@ class login extends Page{
 			$tplmsg->vars["color"] = "Red";
 			$tplmsg->vars["text"] = t("text_login_incorrecto");
 			
-			$user = new Usuarios();
-			//La clave del contador es el email guardado: MySQL iguala variantes que el texto enviado no.
-			$s_clave = $user->getUserByEmail($s_nick) ? $user->resultado[0]["email"] : $s_nick;
-			
-			if(!intentos_bloqueado($s_clave)){
-				if($user->comprobarUserPass($s_nick,$s_pass)){
-					intentos_limpiar($s_clave);
-					$this->session->setUserLogged($user->resultado[0]["email"],$user->resultado[0]["id"],$user->resultado[0]["fk_tipo_usuario"],$user->resultado[0]["fk_idioma"]);
-					$user->setLastVisit($user->resultado[0]["id"]);
-					
-					$b_logueado = true;
-					$tplmsg->vars["color"] = "Green";
-					$tplmsg->vars["text"] = t("text_login_ok");
-				}elseif(count($user->errores) >= 1){
-					//Un fallo de la BD no cuenta como intento.
-					$tplmsg->vars["text"] = t("text_problema_reintentar");
-				}else{
-					intentos_fallo($s_clave);
+			$a_pass = $this->leerPassCifradas(array("pass"));
+			if($a_pass === false){
+				//No se ha probado ninguna contraseña: no cuenta como intento.
+				$tplmsg->vars["text"] = $this->textoFalloCifrado();
+			}else{
+				$user = new Usuarios();
+				//La clave del contador es el email guardado: MySQL iguala variantes que el texto enviado no.
+				$s_clave = $user->getUserByEmail($s_nick) ? $user->resultado[0]["email"] : $s_nick;
+				
+				if(!intentos_bloqueado($s_clave)){
+					if($user->comprobarUserPass($s_nick,$a_pass["pass"])){
+						intentos_limpiar($s_clave);
+						$this->session->setUserLogged($user->resultado[0]["email"],$user->resultado[0]["id"],$user->resultado[0]["fk_tipo_usuario"],$user->resultado[0]["fk_idioma"]);
+						$user->setLastVisit($user->resultado[0]["id"]);
+						
+						$b_logueado = true;
+						$tplmsg->vars["color"] = "Green";
+						$tplmsg->vars["text"] = t("text_login_ok");
+					}elseif(count($user->errores) >= 1){
+						//Un fallo de la BD no cuenta como intento.
+						$tplmsg->vars["text"] = t("text_problema_reintentar");
+					}else{
+						intentos_fallo($s_clave);
+					}
 				}
+				$user->cerrar();
 			}
-			$user->cerrar();
 			$s_msg = $tplmsg->get();
 		}
 		
@@ -78,6 +83,7 @@ class login extends Page{
 		
 		
 		if(!$b_logueado){
+			$s_aviso = $this->prepararCifrado();
 			$campos_form = array("nick" => array("title" => t("text_campo_email"),
 										"name" => "nick",
 										"type" => "text",
@@ -85,7 +91,7 @@ class login extends Page{
 										"onclick" => ""),
 									"pass" => array("title" => t("text_campo_pass"),
 										"name" => "pass",
-										"type" => "password",
+										"type" => "password_cifrado",
 										"value" => "",
 										"onclick" => "")
 								);
@@ -110,7 +116,8 @@ class login extends Page{
 			
 			$form->addContentTable($campos_form,$a_buttons);
 			
-			$tpl->vars["content"] = $s_msg.$form->getForm();
+			//Sin clave no se pinta el formulario: no podría enviarse.
+			$tpl->vars["content"] = $s_msg.$s_aviso.(Cifrado::clavePublica() !== false ? $form->getForm() : "");
 		}else{
 			$tpl->vars["content"] = $s_msg;
 		}

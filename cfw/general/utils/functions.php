@@ -126,6 +126,19 @@ function email_valido($s)
 }//fun email_valido
 
 
+//password_hash da un fatal con NUL y bcrypt ignora lo que pase de 72 bytes.
+function pass_valida($s)
+{
+	return is_string($s) && $s !== "" && strpos($s, "\0") === false && strlen($s) <= 72;
+}//fun pass_valida
+
+
+function pass_hash($s)
+{
+	return pass_valida($s) ? password_hash($s, PASSWORD_DEFAULT) : false;
+}//fun pass_hash
+
+
 function get_ip()
 {
 	return isset($_SERVER["REMOTE_ADDR"]) ? $_SERVER["REMOTE_ADDR"] : "127.0.0.1";
