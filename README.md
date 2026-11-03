@@ -98,6 +98,7 @@ Las contraseñas se guardan en md5 sin sal, y el login las envía ya en md5 desd
 - Se eliminan la función global `saveImage` y `cfw/general/utils/images.php` (`saveImageProductos`). Usa `AdminHelper::saveImage`.
 - `index.php` solo despacha clases que hereden de `Page`. Las demás dan 404, también las de `cfw/specific/pages/`.
 - `main` solo pinta las plantillas de `$a_plantillas_permitidas`. Una subclase de `cfw/specific/` que use otras debe ampliar esa propiedad.
+- La portada usa `portada.tpl` y `portada.ini`: `titulo` y `mensaje` de `main.ini` ya no se muestran en ella, y `/admin/main/init/main` da 404. `main.tpl` sigue en uso para `AdminHelper::delete`. Para personalizar la portada, usa `cfw/specific/lang/<código>/portada.ini` o `cfw/specific/templates/portada.tpl`. Una subclase de `main` con su propia lista de plantillas debe incluir `portada`. Un sitio derivado debe sustituir esta portada en producción, porque publica el framework y sus versiones.
 - En `AdminHelper::form`, una subida fallida deshace el alta con un `DELETE` físico (`Orm::eliminarFila`), y `guardarSubidas` devuelve `bool`.
 - El login usa jQuery 4.0.0 y js-md5 0.9.2 (`js/jquery-4.0.0.min.js`, `js/js-md5-0.9.2.min.js`), y el listado de `AdminHelper`, Prototype 1.7.3 (`js/prototype-1.7.3.js`) con TableKit 1.3b. Prototype 1.7.3 lleva el aviso CVE-2020-27511 (ReDoS en `stripTags` y `unescapeHTML`), sin parche: no pases datos de usuario a esas funciones.
 - jQuery y Prototype no deben cargarse en la misma página.
