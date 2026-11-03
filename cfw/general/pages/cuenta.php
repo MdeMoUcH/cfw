@@ -48,8 +48,14 @@ class cuenta extends Page{
 				$tplaux->vars["text"] = $this->textoFalloCifrado();
 			}elseif(email_valido(@$_POST["email"])){
 				if($s_pass1 === $s_pass2){
+					//Contador por usuario, sin IP. Bloqueado dentro de la ventana: no se prueba la contraseña.
+					$s_intentos = "cuenta|".(int)$this->session->data["id_usuario"];
+					if($s_pass_actual != "" && intentos_bloqueado($s_intentos,false)){
+						$this->bloquearCuenta();
+					}
 					//El email guardado ya pasó por filtro(): se decodifica para que no se codifique dos veces.
 					if($s_pass_actual != "" && $ormuser->comprobarUserPass(html_entity_decode($s_email_actual,ENT_QUOTES,"UTF-8"),$s_pass_actual)){
+						intentos_limpiar($s_intentos,false);
 						$a_data = array("email" => $_POST["email"]);
 						if($s_pass1 != ""){
 							$a_data["pass"] = pass_hash($s_pass1);
@@ -67,6 +73,13 @@ class cuenta extends Page{
 						//Un fallo de la BD no significa que la contraseña sea incorrecta.
 						$tplaux->vars["text"] = t("text_problema_reintentar");
 					}else{
+						//Una contraseña actual vacía no prueba nada: no cuenta.
+						if($s_pass_actual != ""){
+							intentos_fallo($s_intentos,false);
+							if(intentos_bloqueado($s_intentos,false)){
+								$this->bloquearCuenta();
+							}
+						}
 						$tplaux->vars["text"] = t("text_cuenta_pass_incorrecta");
 					}
 				}else{
@@ -109,6 +122,16 @@ class cuenta extends Page{
 		$tplaux->vars["color"] = "Red";
 		$tplaux->vars["text"] = t($s_clave);
 		return $tplaux->get();
+	}
+	
+	
+	//No vuelve: cierra la sesión y redirige al login.
+	protected function bloquearCuenta(){
+		$i_id = (int)$this->session->data["id_usuario"];
+		$this->session->setUserOut();
+		error_log("CFW: demasiados intentos con la contraseña actual en cuenta; sesión cerrada del usuario ".$i_id);
+		$this->guardarFlash("Red","text_cuenta_bloqueada");
+		$this->redirigir($this->config["urlbase"]."admin/login");
 	}
 	
 	

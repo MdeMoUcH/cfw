@@ -122,6 +122,10 @@ class login extends Page{
 			$tpl->vars["content"] = $s_msg;
 		}
 		
+		//Mensaje de una página que cerró la sesión y redirigió aquí (cuenta).
+		if($this->s_mensaje_interno == ""){
+			$this->s_mensaje_interno = $this->leerFlash();
+		}
 		if($this->s_mensaje_interno != ""){
 			$tpl->vars["mensaje"] = $this->s_mensaje_interno;
 		}

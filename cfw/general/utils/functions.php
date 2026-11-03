@@ -149,11 +149,11 @@ function getIP(){
 }
 
 
-//Límite de intentos de login por IP y email.
+//Límite de intentos. Login: por IP y email; con $b_ip = false, la clave sola (cuenta, por usuario).
 define("CFW_INTENTOS_MAX", 5);
 define("CFW_INTENTOS_VENTANA", 900);
 
-function intentos_archivo($s_email)
+function intentos_archivo($s_clave, $b_ip = true)
 {
 	$s_dir = sys_get_temp_dir()."/cfw_intentos/";
 	if(!is_dir($s_dir) && !@mkdir($s_dir, 0700, true) && !is_dir($s_dir))
@@ -163,13 +163,13 @@ function intentos_archivo($s_email)
 	}//if
 	
 	//Normaliza como Orm::filtro. Las variantes del cotejamiento (ŭ, ſ) las resuelve login con el email guardado.
-	return $s_dir.md5(get_ip()."|".strtolower(trim(strip_tags(trim((string)$s_email)))));
+	return $s_dir.md5(($b_ip ? get_ip()."|" : "").strtolower(trim(strip_tags(trim((string)$s_clave)))));
 }//fun intentos_archivo
 
 
-function intentos_bloqueado($s_email)
+function intentos_bloqueado($s_clave, $b_ip = true)
 {
-	$s_archivo = intentos_archivo($s_email);
+	$s_archivo = intentos_archivo($s_clave, $b_ip);
 	if($s_archivo == "" || !is_file($s_archivo))
 	{
 		return false;
@@ -181,9 +181,9 @@ function intentos_bloqueado($s_email)
 }//fun intentos_bloqueado
 
 
-function intentos_fallo($s_email)
+function intentos_fallo($s_clave, $b_ip = true)
 {
-	$s_archivo = intentos_archivo($s_email);
+	$s_archivo = intentos_archivo($s_clave, $b_ip);
 	if($s_archivo == "")
 	{
 		return;
@@ -222,9 +222,9 @@ function intentos_fallo($s_email)
 }//fun intentos_fallo
 
 
-function intentos_limpiar($s_email)
+function intentos_limpiar($s_clave, $b_ip = true)
 {
-	$s_archivo = intentos_archivo($s_email);
+	$s_archivo = intentos_archivo($s_clave, $b_ip);
 	if($s_archivo != "" && is_file($s_archivo))
 	{
 		@unlink($s_archivo);
