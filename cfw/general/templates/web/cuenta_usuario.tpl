@@ -1,5 +1,5 @@
 <p>{text_cuenta_intro}</p>
-<div style="width:90%;margin-left:60px;margin-top:20px;">
+<div class="form_cuenta">
 	<form method="POST" name="formulariouser" id="formulariouser">
 		{content_user}
 		<p><b>{text_cuenta_email}</b> <input type="text" value="{email}" name="email" id="email" /></p>
@@ -12,6 +12,6 @@
 
 		<br/><input type="hidden" value="edituser" name="save" id="save" />
 		<input type="hidden" value="{csrf}" name="csrf" />
-		<input style='width:60%;margin-top:32px;' type="submit" class="button" value="{text_cuenta_guardar}" name="button" id="button" />
+		<input type="submit" class="button" value="{text_cuenta_guardar}" name="button" id="button" />
 	</form>
 </div>

@@ -36,6 +36,23 @@ Cada proyecto adapta estos ficheros, que no están en `specific` y no se actuali
 - La portada usa `portada.tpl` y `portada.ini`: `titulo` y `mensaje` de `main.ini` ya no se muestran en ella, y `/admin/main/init/main` da 404. `main.tpl` sigue en uso para `AdminHelper::delete`. Para personalizar la portada, usa `cfw/specific/lang/<código>/portada.ini` o `cfw/specific/templates/portada.tpl`. Una subclase de `main` con su propia lista de plantillas debe incluir `portada`. Un sitio derivado debe sustituir esta portada en producción, porque publica el framework y sus versiones.
 - El formulario de datos de `cuenta` pasa a `web/cuenta_usuario.tpl`, con `data-cifrar` y sin `name` en las contraseñas. `web/cuenta.tpl` lo pinta con `{aviso_cifrado}` y `{form_usuario}`. Si el sitio tiene su propia copia de `web/cuenta.tpl` en `cfw/specific/templates/`, actualízala: con la antigua no se ve el formulario nuevo, o las contraseñas se envían en claro y el servidor responde «formulario caducado».
 
+## Aspecto
+- `cascara.tpl` lleva `<!DOCTYPE html>`, así que el sitio pasa de modo quirks a modo estándar y cambia el pintado de tablas y alturas de línea. También añade `meta viewport`, `link rel="icon"` a `img/favicon.svg`, el nombre de la cabecera enlazado a la portada y `css/style.css?v=2`. Actualiza las copias de `cfw/specific/templates/cascara.tpl`.
+- `css/style.css` se reescribe. La regla `body` pasa de `tablas.css` a `style.css`, y `tablas.css` se carga con `?v=2`. Fusiona los cambios en el CSS propio del sitio. Clases nuevas: `mensaje`, `mensaje_Red`, `mensaje_Green`, `mensaje_Blue`, `form_cuenta`, `form_salir` y `acciones`.
+- Plantillas:
+  - `usuarios_admin.tpl` y `errores.tpl` pierden las clases `panel-title`, `fondo_claro` y `panel-body`.
+  - `usuarios.tpl` y `elements.tpl` usan `h1` para el título.
+  - `{content}` y `{error}` van dentro de un `div`, no de un `p`. Los errores de `ErrorCFW` salen en `<p>`, no en `<h2>`.
+  - `usuarios.tpl` y `usuarios_admin.tpl` pintan `{boton_salir}` (nueva `html/form_salir.tpl`), que `Page::show` solo rellena con sesión, salvo que la plantilla ya lo defina. `text_logout` deja de usarse en `general`.
+  - `html/p_color.tpl` añade las clases `mensaje mensaje_{color}`.
+  - `web/cuenta_usuario.tpl` ya no lleva estilos en línea.
+  - Actualiza las copias de estas plantillas en `cfw/specific/templates/`.
+- `get_menu` marca como activos Cuenta, Usuarios e Idiomas, y `/login` marca «Login» en lugar de «Inicio».
+- Cada página de `general` pone su `page_title`.
+- Textos: `text_enlace_admin`, `text_enlace_lista`, `text_enlace_nuevo`, `text_salir` y `text_crear_usuario` empiezan con mayúscula, y `text_titulo_form` pasa a «Formulario de {titulo}», lo que cambia también los títulos de los formularios de `AdminHelper`. Hay una clave nueva, `text_titulo_form_usuarios`. Las claves de `cfw/specific/lang/` siguen ganando.
+- `users` tiene `$titulo_form` para el título del formulario: una subclase que cambie `$titulo` debe cambiarlo también.
+- `img/favicon.svg` es el icono de CFW: cada sitio pone el suyo.
+
 ## Idiomas
 - Los `.ini` de idioma se fusionan por clave: `general` y `specific` de `lang_default`, y encima los del idioma actual. Un `specific/lang/<default>` ya no gana a `general/lang/<idioma>` entero, solo aporta sus claves. `text_error_usuario_mail` pasa a `textos.ini`.
 - `get_array_text` y `cfw/general/lang/es/menu.php` ya no se usan, aunque el fichero sigue en el árbol. Ya no se carga PHP desde `lang/`: un `menu.php` propio deja de aplicarse. El menú usa `{text_menu_inicio}` y `{text_menu_login}`.
@@ -53,4 +70,5 @@ Cada proyecto adapta estos ficheros, que no están en `specific` y no se actuali
 - El login usa jQuery 4.0.0 (`js/jquery-4.0.0.min.js`); los formularios con contraseña, node-forge 1.4.2 (`js/forge-1.4.2.min.js`) y `js/cifrado.js`; y el listado de `AdminHelper`, Prototype 1.7.3 (`js/prototype-1.7.3.js`) con TableKit 1.3b. Prototype 1.7.3 lleva el aviso CVE-2020-27511 (ReDoS en `stripTags` y `unescapeHTML`), sin parche: no pases datos de usuario a esas funciones.
 - Se retira jHtmlArea: desaparecen `$jhtmlarea` de `AdminHelper` y la plantilla `elements_html`.
 - `main.js` solo conserva `sendLoginForm` y `devolver_mensaje`. Se eliminan `sendRegisterForm`, `comprobar_mail`, `sendAForm`, `muestraError`, `salir`, `sendFormUser` y los textos que usaban.
+- `main.js` y `cifrado.js` pintan sus mensajes con las clases `mensaje mensaje_Red`, y se cargan como `main.js?v=3` y `cifrado.js?v=2`. Si el sitio tiene sus propias copias, actualízalas.
 - Si activas la edición en línea de TableKit, configura `TableKit.options.editAjaxURI` y añade el `csrf` al POST: hoy no lo envía y la respuesta sería 403.

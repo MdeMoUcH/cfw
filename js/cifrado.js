@@ -65,6 +65,7 @@ function cfwMensajeCifrado(o_form,s_texto){
 	if(!o_mensaje || !o_mensaje.hasAttribute("data-cifrado-mensaje")){
 		o_mensaje = document.createElement("p");
 		o_mensaje.style.color = "Red";
+		o_mensaje.className = "mensaje mensaje_Red";
 		o_mensaje.setAttribute("data-cifrado-mensaje","1");
 		o_form.parentNode.insertBefore(o_mensaje,o_form);
 	}

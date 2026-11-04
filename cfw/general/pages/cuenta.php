@@ -91,6 +91,7 @@ class cuenta extends Page{
 			$tpl->vars["content"] = $tplaux->get();
 		}
 		
+		$this->vars["page_title"] = t("text_cuenta_titulo");
 		$tpl->vars["form_idioma"] = $this->formularioIdioma();
 		$tpl->vars["aviso_cifrado"] = $this->prepararCifrado();
 		$tpl->vars["form_usuario"] = "";

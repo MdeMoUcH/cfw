@@ -1,7 +1,7 @@
-<div class="panel-title fondo_claro"><h1>{titulo}</h1></div>
-<div class="panel-body">
+<h1>{titulo}</h1>
+<div>
 	<div class="clear"> </div>
 	<p>{content}</p>
-	<p>{error}</p>
+	<div>{error}</div>
 	<div class="clear"> </div>
 </div>

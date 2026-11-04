@@ -64,6 +64,7 @@ class idiomas extends Page{
 
 		$tpl = new Template("usuarios");
 		$tpl->vars["titulo"] = t("text_idiomas_titulo");
+		$this->vars["page_title"] = t("text_idiomas_titulo");
 		$tpl->vars["content"] = $this->leerFlash().$s_aviso.$tplnota->get().$form->getForm();
 		
 		$this->show($tpl);

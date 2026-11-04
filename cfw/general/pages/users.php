@@ -12,6 +12,7 @@ class users extends Page{
 	
 	protected $class = "Usuarios";
 	protected $titulo = "";
+	protected $titulo_form = "";
 	protected $slug = "usuarios";
 	protected $template = "usuarios_admin";
 	
@@ -19,6 +20,7 @@ class users extends Page{
 	function __construct(){
 		parent::__construct();
 		$this->titulo = t("text_usuarios");
+		$this->titulo_form = t("text_titulo_form_usuarios");
 	}
 	
 	
@@ -29,6 +31,7 @@ class users extends Page{
 		$tpl = new Template($this->template);
 		$tpl->vars["urlbase"] = $this->config["urlbase"];
 		$tpl->vars["titulo"] = $this->titulo;
+		$this->vars["page_title"] = $this->titulo;
 		
 		$orm = new $this->class();
 		
@@ -59,6 +62,7 @@ class users extends Page{
 		$tpl = new Template($this->template);
 		$tpl->vars["urlbase"] = $this->config["urlbase"];
 		$tpl->vars["titulo"] = $this->titulo;
+		$this->vars["page_title"] = $this->titulo;
 		
 		$orm = new $this->class();
 		$user = ($id != "") ? $orm->getById($id) : false;
@@ -187,7 +191,8 @@ class users extends Page{
 		
 		$tpl = new Template($this->slug);
 		$tpl->vars["urlbase"] = $this->config["urlbase"];
-		$tpl->vars["titulo"] = t("text_titulo_form",array("titulo" => $this->titulo));
+		$tpl->vars["titulo"] = $this->titulo_form;
+		$this->vars["page_title"] = $this->titulo_form;
 		
 		$tpl->vars["content"] = $s_msg.$this->prepararCifrado().(($b_cifrado || $b_edicion) ? $form->getForm() : "");
 			

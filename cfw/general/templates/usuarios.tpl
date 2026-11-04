@@ -1,9 +1,9 @@
 <div>
-	<h2>{titulo}</h2>
+	<h1>{titulo}</h1>
 	<hr/>
 	<div id="mensaje">{mensaje}&nbsp;</div>
-	<p>{content}</p>
+	<div>{content}</div>
 	<br/>
 	<hr/>
-	<form method="post" action="{urlbase}login/logout" style="display:inline;"><input type="hidden" name="csrf" value="{csrf}" /><input type="submit" value="{text_salir}" /></form>
+	<div class="acciones">{boton_salir}</div>
 </div>

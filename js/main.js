@@ -11,7 +11,7 @@ function sendLoginForm(){
 		//La contraseña sale cifrada (js/cifrado.js); si no se puede, no se envía.
 		b_login_enviado = cfwEnviarCifrado(document.getElementById("formulario"));
 	}else{
-		devolver_mensaje("<p style='color:Red;'>"+text_rellena_ambos_campos+"</p>");
+		devolver_mensaje("<p class='mensaje mensaje_Red' style='color:Red;'>"+text_rellena_ambos_campos+"</p>");
 	}
 }
 

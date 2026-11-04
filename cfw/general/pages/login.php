@@ -22,7 +22,7 @@ class login extends Page{
 		$tpljs->vars["nombre"] = "text_rellena_ambos_campos";
 		$tpljs->vars["valor"] = json_js(t("text_rellena_ambos_campos"));
 		$this->vars["js"] .= $tpljs->get();
-		$this->add_include("js",$this->config["urlbase"]."js/main.js?v=2");
+		$this->add_include("js",$this->config["urlbase"]."js/main.js?v=3");
 		
 		$s_msg = "";
 		$b_logueado = false;
@@ -76,10 +76,11 @@ class login extends Page{
 			$s_msg = $tplmsg->get();
 		}
 		
-		$this->vars["menu"] = $this->get_menu("main");
+		$this->vars["menu"] = $this->get_menu("login");
 		$tpl = new Template("usuarios");
 		$tpl->vars["urlbase"] = $this->config["urlbase"];
 		$tpl->vars["titulo"] = t("text_login");
+		$this->vars["page_title"] = t("text_login");
 		
 		
 		if(!$b_logueado){

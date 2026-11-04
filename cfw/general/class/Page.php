@@ -31,7 +31,7 @@ class Page extends App
 		$this->vars["body"] = "";
 		
 		//$this->add_include("css",$this->config["urlbase"]."css/style.css");
-		$this->add_include("css",$this->config["urlbase"]."css/tablas.css");
+		$this->add_include("css",$this->config["urlbase"]."css/tablas.css?v=2");
 	}//fun __construct
 	
 	
@@ -139,7 +139,7 @@ class Page extends App
 			$this->vars["js"] .= $tpljs->get();
 		}//foreach
 		$this->add_include("js",$this->config["urlbase"]."js/forge-1.4.2.min.js");
-		$this->add_include("js",$this->config["urlbase"]."js/cifrado.js");
+		$this->add_include("js",$this->config["urlbase"]."js/cifrado.js?v=2");
 		
 		$tpl->vars["text"] = t("text_requiere_javascript");
 		return "<noscript>".$tpl->get()."</noscript>";
@@ -230,6 +230,18 @@ class Page extends App
 		$this->session->data["paginas"]++;
 		$this->session->actualiza();
 		
+		//Con la sesión del momento: tras un login sale y tras un logout no.
+		if(!isset($tpl_aux->vars["boton_salir"]))
+		{
+			$tpl_aux->vars["boton_salir"] = "";
+			if($this->session->isUserLogged())
+			{
+				$tpl_salir = new Template("html/form_salir");
+				$tpl_salir->vars["urlbase"] = $this->config["urlbase"];
+				$tpl_aux->vars["boton_salir"] = $tpl_salir->get();
+			}//if
+		}//if
+		
 		$this->set_vars($tpl_aux->vars);
 		$this->vars["body"] = $tpl_aux->get();
 		
@@ -281,11 +293,11 @@ class Page extends App
 		
 		$vars["enlaces_usuario"] = "";
 		if($this->session->isUserLogged()){
-			$vars["enlaces_usuario"] .= '<li><a href="'.$this->config["urlbase"].'admin/cuenta">'.t("text_menu_cuenta").'</a></li>';
+			$vars["enlaces_usuario"] .= '<li '.($selected === "cuenta" ? 'class="active" ' : '').'><a href="'.$this->config["urlbase"].'admin/cuenta">'.t("text_menu_cuenta").'</a></li>';
 		}
 		if($this->session->isUserAdmin()){
-			$vars["enlaces_usuario"] .= '<li><a href="'.$this->config["urlbase"].'admin/users">'.t("text_usuarios").'</a></li>';
-			$vars["enlaces_usuario"] .= '<li><a href="'.$this->config["urlbase"].'admin/idiomas">'.t("text_menu_idiomas").'</a></li>';
+			$vars["enlaces_usuario"] .= '<li '.($selected === "usuarios" ? 'class="active" ' : '').'><a href="'.$this->config["urlbase"].'admin/users">'.t("text_usuarios").'</a></li>';
+			$vars["enlaces_usuario"] .= '<li '.($selected === "idiomas" ? 'class="active" ' : '').'><a href="'.$this->config["urlbase"].'admin/idiomas">'.t("text_menu_idiomas").'</a></li>';
 		}
 		
 		$tpl->set_vars($vars);

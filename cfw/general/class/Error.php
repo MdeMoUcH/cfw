@@ -19,7 +19,7 @@ class ErrorCFW extends Page
 			$s_errores = "";
 			foreach($errores as $error)
 			{
-				$s_errores .= "<h2>".escapar($error)."</h2>";
+				$s_errores .= "<p>".escapar($error)."</p>";
 			}
 			$vars["error"] = $s_errores;
 		}
