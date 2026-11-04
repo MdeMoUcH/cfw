@@ -64,7 +64,7 @@ Cada proyecto adapta estos ficheros, que no están en `specific` y no se actuali
 - **Migración desde md5.** Los md5 existentes se aceptan una vez y se convierten a `password_hash` en el primer login correcto, sin que nadie cambie su contraseña. Las cuentas que nunca inicien sesión siguen en md5. El hash también se renueva si cambia el coste de `PASSWORD_DEFAULT`, por ejemplo al cambiar de versión de PHP.
 - `comprobarUserPass` recibe la contraseña real, no su md5.
 - `AdminHelper::editfield` ya no admite el campo `pass`.
-- El login ya no envía el md5 de la contraseña, sino la contraseña cifrada (ver «Contraseñas» en [README.md](README.md)). `js/js-md5-0.9.2.min.js` ya no se carga.
+- El login ya no envía el md5 de la contraseña, sino la contraseña cifrada (ver «Contraseñas» en [README.md](README.md)). Se elimina `js/js-md5-0.9.2.min.js`: si un proyecto la usa en `specific`, debe conservar su propia copia.
 
 ## JavaScript
 - El login usa jQuery 4.0.0 (`js/jquery-4.0.0.min.js`); los formularios con contraseña, node-forge 1.4.2 (`js/forge-1.4.2.min.js`) y `js/cifrado.js`; y el listado de `AdminHelper`, Prototype 1.7.3 (`js/prototype-1.7.3.js`) con TableKit 1.3b. Prototype 1.7.3 lleva el aviso CVE-2020-27511 (ReDoS en `stripTags` y `unescapeHTML`), sin parche: no pases datos de usuario a esas funciones.
