@@ -13,7 +13,7 @@ Las piezas MVC son:
 - **Vista:** las plantillas `.tpl` de `templates/`, con `Template`.
 
 ## Documentación
-- [INSTALACION.md](INSTALACION.md): requisitos, puesta en marcha, permisos de `cfw/datos`, clave privada del cifrado y despliegue.
+- [INSTALACION.md](INSTALACION.md): requisitos, puesta en marcha, protección de `cfw/` con `.htaccess`, permisos de `cfw/datos`, clave privada del cifrado y despliegue.
 - [MIGRACION.md](MIGRACION.md): qué revisar al actualizar a esta versión un sitio ya construido con CFW.
 
 ## Enrutamiento

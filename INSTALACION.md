@@ -12,6 +12,20 @@ Qué necesita CFW y cómo ponerlo en marcha. Para saber qué es y cómo funciona
 2. Crea el primer administrador con el `INSERT` de ejemplo comentado en `db.sql`, con tu email y el hash de tu contraseña generado con `password_hash`.
 3. Revisa `cfw/config.ini`. El archivo está versionado: pon los datos reales solo en el servidor y no los subas al repositorio. `desarrollo = true` muestra errores y detalles; no lo actives en un servidor público.
 4. Usa siempre HTTPS. El framework no lo fuerza, y el cifrado de las contraseñas no lo sustituye.
+5. Comprueba que Apache aplica los `.htaccess` (ver «Protección de `cfw/` con `.htaccess`»).
+
+## Protección de `cfw/` con `.htaccess`
+Lo único que impide descargar `cfw/` son el `.htaccess` raíz y `cfw/datos/.htaccess`. Ahí están la clave privada del cifrado, `cfw/config.ini` con los datos de la base de datos y `cfw/datos/idiomas.ini`. El `.htaccess` raíz también bloquea los `.sql`, `.md`, `.ini` y `.tpl` y los archivos ocultos, como `.git/`. **Si el servidor no lee los `.htaccess`, no da ningún error: sirve esos archivos tal cual.**
+- **Apache con `AllowOverride None`.** Es el valor por defecto de Apache desde la 2.3.9, y el que trae Debian/Ubuntu para `/var/www/` en `apache2.conf`. Pon `AllowOverride All` en el `<Directory>` del sitio (o en su `VirtualHost`) y reinicia Apache. La imagen oficial de Docker `php:*-apache` ya lo hace en `docker-php.conf`; un Apache instalado con `apt` no.
+- **nginx, Caddy, LiteSpeed sin soporte de `.htaccess` u otro servidor.** Ignoran los `.htaccess`. CFW no está preparado para ellos: habría que traducir a su configuración todas las reglas del `.htaccess` raíz, incluidos los bloqueos.
+- **Comprobación.** Hazla tras instalar y tras cada cambio de servidor o de configuración. Las tres URL deben dar `403`:
+  ```
+  curl -s -o /dev/null -w '%{http_code}\n' https://tu-sitio/cfw/datos/clave_privada.pem
+  curl -s -o /dev/null -w '%{http_code}\n' https://tu-sitio/cfw/config.ini
+  curl -s -o /dev/null -w '%{http_code}\n' https://tu-sitio/db.sql
+  ```
+  Un `200` significa que el archivo se descarga: corrige el servidor y, si era la clave privada, rótala (ver «Clave privada del cifrado»). Si era `config.ini`, cambia también la contraseña de la base de datos. Otra pista: si los `.htaccess` no se aplican, `/login` y `/admin` dan 404.
+- Aun con los `.htaccess` activos, lo más seguro es tener la clave privada fuera de la raíz web (ver «Otra ubicación» en «Clave privada del cifrado»).
 
 ## Carpeta `cfw/datos` y permisos
 Apache escribe en `cfw/datos/` la clave privada del cifrado, si no se configura otra ubicación, y la opción de multiidioma, `cfw/datos/idiomas.ini` (ver «Idiomas» en [README.md](README.md)).
@@ -32,7 +46,7 @@ chgrp www-data cfw/datos && chmod 770 cfw/datos
   - La carpeta no puede tener escritura para todos (por ejemplo 777 o `/tmp`). Se admite la de grupo, como el 775 de un clon o el 770 con el grupo de Apache (ver «Carpeta `cfw/datos` y permisos»), y cualquier propietario, también root. Para corregirlo: `chmod o-w cfw/datos`.
   - El propietario solo se comprueba con la extensión `posix`, que se recomienda tener. Sin ella la garantía es más débil: se acepta una clave de cualquier propietario si cumple el resto (archivo normal, sin escritura de grupo ni de otros, carpeta sin escritura para todos), y al generarla queda una línea `CFW:` en el log que lo avisa. En Windows no se comprueban propietario ni permisos, solo que no sea un enlace.
 - Para rotarla, bórrala: se crea otra en la siguiente petición. Solo fallan una vez los formularios que estaban abiertos.
-- Exige el `.htaccess` activo: lo protegen el raíz y `cfw/datos/.htaccess`. Sin ellos se podría descargar. Con varios servidores, todos deben compartir la misma clave.
+- En `cfw/datos/` solo la protegen el `.htaccess` raíz y `cfw/datos/.htaccess`. Si el servidor no los aplica (nginx o `AllowOverride None`), se puede descargar sin que se avise de nada: ver «Protección de `cfw/` con `.htaccess`». Con varios servidores, todos deben compartir la misma clave.
 - **Otra ubicación**, por ejemplo fuera de la raíz web: añade a `cfw/config.ini` la opción `cifrado.clave_privada` con la ruta absoluta del archivo, en su propia sección:
   ```
   [cifrado]
