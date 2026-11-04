@@ -29,7 +29,7 @@ class GestorIdiomas
 
 	private static function rutaOpciones()
 	{
-		return self::rutaBase()."datos/idiomas.ini";
+		return self::rutaBase()."data/idiomas.ini";
 	}//fun rutaOpciones
 
 
@@ -366,7 +366,7 @@ class GestorIdiomas
 	}//fun opcionesPreparadas
 
 
-	//Reemplazo atómico con temporal y rename: Apache solo necesita permiso sobre la carpeta datos.
+	//Reemplazo atómico con temporal y rename: Apache solo necesita permiso sobre la carpeta data.
 	static function guardar($b_activo, $a_codigos)
 	{
 		$a_disponibles = self::disponibles();

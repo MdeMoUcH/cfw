@@ -15,14 +15,14 @@ class Cifrado
 	private static $a_detalles = array();
 
 
-	//cifrado.clave_privada de config.ini, si está; si no, la de cfw/datos.
+	//cifrado.clave_privada de config.ini, si está; si no, la de cfw/data.
 	//false si está pero no es absoluta (vacía, off/no/false/none, array o relativa).
 	static function ruta()
 	{
 		$app = new AppConf();
 		if(!is_array($app->config) || !array_key_exists("cifrado.clave_privada", $app->config))
 		{
-			return dirname(__DIR__,2)."/datos/clave_privada.pem";
+			return dirname(__DIR__,2)."/data/clave_privada.pem";
 		}//if
 
 		$s_ruta = is_string($app->config["cifrado.clave_privada"]) ? trim($app->config["cifrado.clave_privada"]) : "";
@@ -177,7 +177,7 @@ class Cifrado
 	}//fun generar
 
 
-	//Se admite la escritura de grupo (cfw/datos en 775 o 770 con el grupo de Apache), no la de todos.
+	//Se admite la escritura de grupo (cfw/data en 775 o 770 con el grupo de Apache), no la de todos.
 	private static function carpetaSegura($s_carpeta)
 	{
 		$a_stat = @stat($s_carpeta);

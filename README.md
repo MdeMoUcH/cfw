@@ -13,7 +13,7 @@ Las piezas MVC son:
 - **Vista:** las plantillas `.tpl` de `templates/`, con `Template`.
 
 ## Documentación
-- [INSTALACION.md](INSTALACION.md): requisitos, puesta en marcha, protección de `cfw/` con `.htaccess`, permisos de `cfw/datos`, clave privada del cifrado y despliegue.
+- [INSTALACION.md](INSTALACION.md): requisitos, puesta en marcha, protección de `cfw/` con `.htaccess`, permisos de `cfw/data`, clave privada del cifrado y despliegue.
 - [MIGRACION.md](MIGRACION.md): qué revisar al actualizar a esta versión un sitio ya construido con CFW.
 
 ## Enrutamiento
@@ -49,14 +49,14 @@ Límites:
 - Una función de `specific/utils/functions.php` no puede llamarse igual que una de `general`: PHP da un error fatal.
 
 ## Qué queda fuera de `specific`
-Cada proyecto también adapta estos ficheros, que no están en `specific`: `cfw/config.ini`, el `.htaccess` raíz, `db.sql`, `css/`, `js/` e `img/`. Al actualizar CFW en un proyecto hay que revisarlos a mano (ver [MIGRACION.md](MIGRACION.md)). `cfw/datos/` guarda lo que escribe la aplicación. Su contenido no se versiona, salvo su `.htaccess`.
+Cada proyecto también adapta estos ficheros, que no están en `specific`: `cfw/config.ini`, el `.htaccess` raíz, `db.sql`, `css/`, `js/` e `img/`. Al actualizar CFW en un proyecto hay que revisarlos a mano (ver [MIGRACION.md](MIGRACION.md)). `cfw/data/` guarda lo que escribe la aplicación. Su contenido no se versiona, salvo su `.htaccess`.
 
 ## Idiomas
 Los textos están en `cfw/general/lang/<código>/` (`textos.ini` y un `.ini` por plantilla). Los de `cfw/specific/lang/<código>/` tienen prioridad, clave a clave.
 
-La opción de multiidioma se gestiona en `/admin/idiomas` y se guarda en `cfw/datos/idiomas.ini`, que no se versiona. Con ella activa, cada usuario elige su idioma en `cuenta` y los visitantes anónimos reciben el de `Accept-Language`, entre los activos. Si no, todo sale en `lang_default`, que siempre está activo.
+La opción de multiidioma se gestiona en `/admin/idiomas` y se guarda en `cfw/data/idiomas.ini`, que no se versiona. Con ella activa, cada usuario elige su idioma en `cuenta` y los visitantes anónimos reciben el de `Accept-Language`, entre los activos. Si no, todo sale en `lang_default`, que siempre está activo.
 
-Antes de usarla, Apache necesita permiso de escritura sobre `cfw/datos/`: ver «Carpeta `cfw/datos` y permisos» en [INSTALACION.md](INSTALACION.md).
+Antes de usarla, Apache necesita permiso de escritura sobre `cfw/data/`: ver «Carpeta `cfw/data` y permisos» en [INSTALACION.md](INSTALACION.md).
 
 Para añadir un idioma, crea `cfw/general/lang/<código>/textos.ini`, con un código de dos letras minúsculas y `nombre_idioma`; las claves que falten salen en `lang_default`. Los valores van entre comillas dobles y no pueden contener comillas dobles. Si el valor lleva HTML o datos, escápalos antes de pasarlos a `t()`.
 
@@ -87,7 +87,7 @@ Los md5 de versiones anteriores se convierten a `password_hash` en el primer log
 **Límites:**
 - Usa siempre HTTPS. El framework no lo fuerza, y el cifrado de las contraseñas no lo sustituye.
 - Las plantillas no escapan la salida. Escapa la salida con `escapar()`, que no codifica dos veces.
-- Los textos de `lang` se pintan sin escapar: quien pueda escribir en `cfw/general/lang/` puede inyectar código en todo el sitio (ver «Carpeta `cfw/datos` y permisos» en [INSTALACION.md](INSTALACION.md)).
+- Los textos de `lang` se pintan sin escapar: quien pueda escribir en `cfw/general/lang/` puede inyectar código en todo el sitio (ver «Carpeta `cfw/data` y permisos» en [INSTALACION.md](INSTALACION.md)).
 - Prototype 1.7.3 lleva el aviso CVE-2020-27511 (ReDoS en `stripTags` y `unescapeHTML`), sin parche: no pases datos de usuario a esas funciones.
 - El límite del login cuenta por IP y email: no frena a quien prueba un mismo email desde muchas IP, ni a quien prueba muchos emails desde una sola IP.
 - Quien robe una sesión puede bloquear `cuenta` de ese usuario durante 15 minutos desde el último fallo, fallando la contraseña actual. Detrás de un proxy todos los visitantes comparten `REMOTE_ADDR` y, por tanto, el contador del login: ver «Despliegue» en [INSTALACION.md](INSTALACION.md).

@@ -1,4 +1,4 @@
 .magents/
 .claude/
-cfw/datos/*
-!cfw/datos/.htaccess
+cfw/data/*
+!cfw/data/.htaccess
