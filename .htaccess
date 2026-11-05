@@ -2,6 +2,14 @@ RewriteEngine On
 IndexIgnore *
 Options -Indexes
 
+#Cabeceras de seguridad. Solo se añaden si la respuesta no las trae ya: en las páginas de PHP manda index.php.
+<IfModule mod_headers.c>
+Header always set X-Frame-Options "DENY" "expr=-z resp('X-Frame-Options')"
+Header always set Content-Security-Policy "frame-ancestors 'none'" "expr=-z resp('Content-Security-Policy')"
+Header always set X-Content-Type-Options "nosniff" "expr=-z resp('X-Content-Type-Options')"
+Header always set Referrer-Policy "strict-origin-when-cross-origin" "expr=-z resp('Referrer-Policy')"
+</IfModule>
+
 RewriteRule (^|/)\.(?!well-known/) - [F,L]
 RewriteRule ^cfw(/|$) - [F,NC,L]
 RewriteRule \.(ini|sql|tpl|md)$ - [F,NC,L]

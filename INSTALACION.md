@@ -2,7 +2,8 @@
 Qué necesita CFW y cómo ponerlo en marcha. Para saber qué es y cómo funciona, ver [README.md](README.md).
 
 ## Requisitos
-- PHP 8.2 o superior (probado en 8.2, 8.3, 8.4 y 8.5), Apache con `mod_rewrite` y `.htaccess` activo, MySQL 5.7 y las extensiones `mysqli` y `openssl`.
+- PHP 8.2 o superior (probado en 8.2, 8.3, 8.4 y 8.5), Apache 2.4.10 o superior con `mod_rewrite`, `mod_headers` (`a2enmod headers`) y `.htaccess` activo, MySQL 5.7 y las extensiones `mysqli` y `openssl`.
+- `mod_headers` sirve para que el `.htaccess` raíz añada las cabeceras de seguridad (`X-Frame-Options`, `Content-Security-Policy: frame-ancestors 'none'`, `X-Content-Type-Options` y `Referrer-Policy`) a lo que no pasa por PHP: estáticos, redirecciones y errores de Apache. Sin el módulo no se avisa de nada: esas respuestas salen sin ellas, y las páginas siguen protegidas porque las envía `index.php`.
 - La extensión `posix` se recomienda: sin ella no se comprueba el propietario de la clave privada (ver «Clave privada del cifrado»).
 - La extensión GD (con JPEG y PNG) solo hace falta para subir imágenes. Sin ella, `saveImage` devuelve `false`.
 - La extensión `mbstring` solo hace falta para `filtro_mysql_utf8`.
@@ -25,6 +26,10 @@ Lo único que impide descargar `cfw/` son el `.htaccess` raíz y `cfw/data/.htac
   curl -s -o /dev/null -w '%{http_code}\n' https://tu-sitio/db.sql
   ```
   Un `200` significa que el archivo se descarga: corrige el servidor y, si era la clave privada, rótala (ver «Clave privada del cifrado»). Si era `config.ini`, cambia también la contraseña de la base de datos. Otra pista: si los `.htaccess` no se aplican, `/login` y `/admin` dan 404.
+- **Comprobación de las cabeceras de seguridad.** Debe mostrar `X-Frame-Options: DENY` una sola vez. Si no sale, falta `mod_headers` (ver «Requisitos»):
+  ```
+  curl -sI https://tu-sitio/css/style.css | grep -i x-frame-options
+  ```
 - Aun con los `.htaccess` activos, lo más seguro es tener la clave privada fuera de la raíz web (ver «Otra ubicación» en «Clave privada del cifrado»).
 
 ## Carpeta `cfw/data` y permisos

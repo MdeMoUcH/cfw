@@ -7,6 +7,8 @@ Cada proyecto adapta estos ficheros, que no están en `specific` y no se actuali
   - `langs` de `config.ini` queda sin uso.
   - Opción nueva y opcional `intentos.carpeta`, para guardar los contadores del límite de intentos en otra carpeta (ver «Límite de intentos» en «Despliegue» de [INSTALACION.md](INSTALACION.md)).
 - El `.htaccess` raíz.
+  - El bloque `<IfModule mod_headers.c>` de las cabeceras de seguridad es nuevo: cópialo y activa `mod_headers` (ver «Requisitos» en [INSTALACION.md](INSTALACION.md)). Sin el módulo no da error, pero los estáticos y los errores de Apache quedan sin esas cabeceras.
+  - Apache solo pone cada cabecera si la respuesta no la trae ya.
 - `db.sql`:
   - La columna `pass` debe ser al menos `varchar(255)`.
 - `css/`, `js/` e `img/`.
@@ -18,6 +20,10 @@ Cada proyecto adapta estos ficheros, que no están en `specific` y no se actuali
 - Los métodos de `App` y `Page` (y sus redefiniciones) ya no son accesibles por URL.
 - `get_ip` usa solo `REMOTE_ADDR` y deja de usar `X-Forwarded-For`.
 - `index.php` solo despacha clases que hereden de `Page`. Las demás dan 404, también las de `cfw/specific/pages/`.
+- `index.php` envía `X-Frame-Options: DENY`, `Content-Security-Policy: frame-ancestors 'none'`, `X-Content-Type-Options: nosniff` y `Referrer-Policy: strict-origin-when-cross-origin`:
+  - Ninguna página se puede enmarcar, tampoco desde el propio sitio. Para enmarcar las propias, redefine en la página `X-Frame-Options` y `Content-Security-Policy` con `header()`, por ejemplo `SAMEORIGIN` y `frame-ancestors 'self'`. Apache no las pisa.
+  - Una CSP propia enviada desde PHP sustituye a la del framework y tiene que incluir `frame-ancestors`.
+  - Con `nosniff`, los scripts y estilos servidos con un `Content-Type` incorrecto dejan de cargarse.
 
 ## Páginas, clases y funciones
 - `saveImage`, `saveFile`, `guardarCategorias` y `load_template` pasan a `protected`.

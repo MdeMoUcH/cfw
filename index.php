@@ -8,6 +8,12 @@
  ***************/
 
 
+//Cabeceras de seguridad: nadie puede enmarcar las páginas (clickjacking). El .htaccess pone las mismas en lo que no pasa por aquí.
+header("X-Frame-Options: DENY");
+header("Content-Security-Policy: frame-ancestors 'none'");
+header("X-Content-Type-Options: nosniff");
+header("Referrer-Policy: strict-origin-when-cross-origin");
+
 require_once("cfw/includes.php");
 //die("hello");
 $app = new AppConf();

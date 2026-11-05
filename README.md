@@ -82,6 +82,7 @@ Los md5 de versiones anteriores se convierten a `password_hash` en el primer log
 - Solo son accesibles por URL los métodos públicos declarados en la página, no los de `App` ni `Page` (ver «Enrutamiento»).
 - La cookie de sesión es HttpOnly y SameSite=Lax, y el id de sesión se regenera al entrar y al salir.
 - Contraseñas con `password_hash` y enviadas cifradas (ver «Contraseñas»).
+- **Clickjacking:** las páginas no se pueden enmarcar en un iframe, ni desde otra web ni desde el mismo sitio (`X-Frame-Options: DENY` y `frame-ancestors 'none'`). Se envían también `X-Content-Type-Options: nosniff` y `Referrer-Policy: strict-origin-when-cross-origin`. Fuera de PHP (estáticos y errores de Apache) dependen de `mod_headers`: ver «Requisitos» en [INSTALACION.md](INSTALACION.md).
 - **Límite de intentos:** el login admite 5 fallos por IP y email; al llegar al límite, ese email no puede entrar desde esa IP. En `cuenta`, la contraseña actual admite 5 fallos por usuario, sin IP; al llegar al límite se cierra la sesión y se vuelve al login con un aviso. Los fallos se acumulan mientras entre uno y otro pasen menos de 15 minutos, y el bloqueo dura 15 minutos desde el último fallo.
 
 **Límites:**
