@@ -64,6 +64,8 @@ chgrp www-data cfw/data && chmod 770 cfw/data
 - **Multiidioma** (`cfw/data/idiomas.ini`):
   - Conserva el fichero entre despliegues. Un `rsync --delete` o un `git clean -X` lo borran: el multiidioma se desactiva y `/admin/idiomas` muestra un aviso.
   - La opción está pensada para un solo servidor: con varios, el fichero no se comparte entre ellos.
+  - Tiene que ser un archivo normal. Un enlace (también roto), un FIFO o una carpeta en su lugar desactivan el multiidioma: `/admin/idiomas` muestra el aviso y queda una línea `CFW:` en el log en cada petición. Guardar esa página lo sustituye por un archivo normal, salvo si es una carpeta.
+  - Se crea con modo 0640, salvo que una ACL por defecto de `cfw/data` dé otro sin permisos para otros (por ejemplo, 0660). Si la ACL da permisos para otros o de ejecución, el guardado falla con el mensaje de error y una línea `CFW:` en el log.
 - **Clave privada:** con varios servidores, todos deben compartir la misma clave (ver «Clave privada del cifrado»).
 - **Límite de intentos** (ver «Seguridad» en [README.md](README.md)): los contadores son archivos en `cfw/data/intentos/`, si no se configura otra carpeta.
   - **Otra carpeta**, por ejemplo fuera de la raíz web: añade a `cfw/config.ini` la opción `intentos.carpeta`, en su propia sección:

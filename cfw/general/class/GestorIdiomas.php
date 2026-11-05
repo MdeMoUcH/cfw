@@ -149,6 +149,49 @@ class GestorIdiomas
 	}//fun porDefecto
 
 
+	//Como Cifrado::leer: solo un archivo normal, sin seguir enlaces ni abrir un FIFO. Null si no hay nada o se rechaza, false si no se puede leer.
+	private static function leerOpciones($s_fichero)
+	{
+		$b_unix = PHP_OS_FAMILY !== "Windows";
+
+		//Segundo intento por si un guardado hace rename entre el lstat y el fopen.
+		for($i = 0; $i < 2; $i++)
+		{
+			clearstatcache(true, $s_fichero);
+			$a_lstat = @lstat($s_fichero);
+			if(!$a_lstat)
+			{
+				return null;
+			}//if
+
+			if(($a_lstat["mode"] & 0170000) !== 0100000)
+			{
+				break;
+			}//if
+
+			$fd = @fopen($s_fichero, "r");
+			if(!$fd)
+			{
+				return false;
+			}//if
+
+			$a_stat = fstat($fd);
+			if($a_stat && ($a_stat["mode"] & 0170000) === 0100000
+				&& (!$b_unix || ($a_stat["dev"] === $a_lstat["dev"] && $a_stat["ino"] === $a_lstat["ino"])))
+			{
+				$s_contenido = stream_get_contents($fd);
+				fclose($fd);
+				return $s_contenido;
+			}//if
+
+			fclose($fd);
+		}//for
+
+		error_log("CFW: fichero de opciones de idioma rechazado, es un enlace o no es un archivo normal: ".$s_fichero);
+		return null;
+	}//fun leerOpciones
+
+
 	private static function opciones()
 	{
 		if(self::$a_opciones !== null)
@@ -159,12 +202,12 @@ class GestorIdiomas
 		self::$a_opciones = array("multiidioma" => false, "idiomas" => array());
 		$s_fichero = self::rutaOpciones();
 
-		if(!is_file($s_fichero))
+		$s_contenido = self::leerOpciones($s_fichero);
+		if($s_contenido === null)
 		{
 			return self::$a_opciones;
 		}//if
 
-		$s_contenido = @file_get_contents($s_fichero);
 		$a_datos = ($s_contenido === false) ? false : @parse_ini_string($s_contenido, false, INI_SCANNER_RAW);
 
 		if(!is_array($a_datos)
@@ -356,13 +399,14 @@ class GestorIdiomas
 	}//fun textos
 
 
-	//Falso si falta el fichero de opciones o no se puede escribir en su carpeta.
+	//Falso si falta el fichero de opciones, no es un archivo normal (sin seguir enlaces) o no se puede escribir en su carpeta.
 	static function opcionesPreparadas()
 	{
 		$s_fichero = self::rutaOpciones();
 
 		clearstatcache();
-		return is_file($s_fichero) && is_readable($s_fichero) && is_writable(dirname($s_fichero));
+		$a_lstat = @lstat($s_fichero);
+		return $a_lstat && ($a_lstat["mode"] & 0170000) === 0100000 && is_readable($s_fichero) && is_writable(dirname($s_fichero));
 	}//fun opcionesPreparadas
 
 
@@ -396,9 +440,12 @@ class GestorIdiomas
 	}//fun guardar
 
 
+	//Mismo patrón que Cifrado::generar, pero con rename: gana el último guardado.
 	private static function escribirAtomico($s_fichero, $s_contenido)
 	{
 		$s_carpeta = dirname($s_fichero);
+		$s_tmp = false;
+		$b_unix = PHP_OS_FAMILY !== "Windows";
 
 		clearstatcache();
 		if(!is_dir($s_carpeta) || !is_writable($s_carpeta))
@@ -406,28 +453,45 @@ class GestorIdiomas
 			return false;
 		}//if
 
-		$s_tmp = @tempnam($s_carpeta, "idiomas_");
-		if($s_tmp === false)
+		try
 		{
-			return false;
-		}//if
+			$s_nombre = $s_carpeta."/idiomas_".bin2hex(random_bytes(16)).".tmp";
+		}//try
+		catch(\Exception $e)
+		{
+			$s_nombre = "";
+		}//catch
 
-		//tempnam cae al temporal del sistema si no puede usar la carpeta.
-		$b_ok = dirname($s_tmp) === realpath($s_carpeta);
+		//"x" no abre un archivo que ya exista; con esta umask se crea en 0640.
+		$i_umask = umask(0027);
+		$fd = $s_nombre !== "" ? @fopen($s_nombre, "x") : false;
+		umask($i_umask);
+		$b_ok = $fd !== false;
+
 		if($b_ok)
 		{
-			$fd = @fopen($s_tmp, "w");
-			$b_ok = $fd && fwrite($fd, $s_contenido) === strlen($s_contenido) && fflush($fd) && fsync($fd);
-			if($fd)
-			{
-				fclose($fd);
-			}//if
+			//Solo se borra lo que ha creado este fopen.
+			$s_tmp = $s_nombre;
 
-			//tempnam crea con 0600 y rename lo conserva.
-			$b_ok = $b_ok && @chmod($s_tmp, 0640) && @rename($s_tmp, $s_fichero);
+			//"x" sigue los enlaces rotos: antes de escribir, lo abierto debe ser el archivo de la ruta.
+			$a_stat = fstat($fd);
+			clearstatcache(true, $s_tmp);
+			$a_lstat = @lstat($s_tmp);
+			$b_ok = $a_stat && $a_lstat && ($a_lstat["mode"] & 0170000) === 0100000
+				&& (!$b_unix || ($a_stat["dev"] === $a_lstat["dev"] && $a_stat["ino"] === $a_lstat["ino"]));
+
+			//Sin chmod, que sigue enlaces (PHP no tiene fchmod): se acepta el modo creado, 0640 u otro de una ACL por defecto, si no da nada a otros ni ejecución.
+			$i_modo = $a_stat ? $a_stat["mode"] & 0777 : 0;
+			$b_ok = $b_ok && (!$b_unix || (($i_modo & ~0660) === 0 && ($i_modo & 0600) === 0600));
+
+			$b_ok = $b_ok && fwrite($fd, $s_contenido) === strlen($s_contenido) && fflush($fd) && fsync($fd);
+			fclose($fd);
 		}//if
 
-		if(!$b_ok)
+		//rename sustituye un destino que sea un enlace sin seguirlo.
+		$b_ok = $b_ok && @rename($s_tmp, $s_fichero);
+
+		if(!$b_ok && $s_tmp !== false)
 		{
 			@unlink($s_tmp);
 		}//if

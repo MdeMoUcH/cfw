@@ -66,6 +66,7 @@ Cada proyecto adapta estos ficheros, que no están en `specific` y no se actuali
 - `cfw/specific/lang/{es,en}/main.ini` siguen en el árbol y tienen prioridad sobre `general` en su idioma: cambiar `titulo` o `mensaje` en `cfw/general/lang/<código>/main.ini` no tiene efecto mientras existan esas claves en `specific`.
 - Los `.ini` de idioma se leen con `INI_SCANNER_RAW`. Un fichero con una comilla sin cerrar o una línea sin clave se ignora y deja una línea `CFW:` en el log.
 - `titulo` y `singular` de las subclases de `AdminHelper` no se traducen solos: los define cada sitio.
+- `cfw/data/idiomas.ini` ya no se lee si es un enlace (por ejemplo, a una carpeta compartida de despliegue): el multiidioma se desactiva, `/admin/idiomas` muestra el aviso y queda una línea `CFW:` en el log en cada petición. Copia su contenido a un archivo normal o vuelve a guardar desde `/admin/idiomas` (ver «Multiidioma» en «Despliegue» de [INSTALACION.md](INSTALACION.md)).
 
 ## Contraseñas
 - **Migración desde md5.** Los md5 existentes se aceptan una vez y se convierten a `password_hash` en el primer login correcto, sin que nadie cambie su contraseña. Las cuentas que nunca inicien sesión siguen en md5. El hash también se renueva si cambia el coste de `PASSWORD_DEFAULT`, por ejemplo al cambiar de versión de PHP.
