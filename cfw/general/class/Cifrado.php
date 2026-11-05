@@ -125,6 +125,7 @@ class Cifrado
 		$s_carpeta = dirname($s_ruta);
 		$s_tmp = false;
 		$s_pem = "";
+		$b_unix = PHP_OS_FAMILY !== "Windows";
 
 		$b_ok = is_dir($s_carpeta) && is_writable($s_carpeta);
 		if($b_ok)
@@ -135,20 +136,36 @@ class Cifrado
 
 		if($b_ok)
 		{
-			$s_tmp = @tempnam($s_carpeta, "clave_");
-			//tempnam cae al temporal del sistema si no puede usar la carpeta.
-			$b_ok = $s_tmp !== false && dirname($s_tmp) === realpath($s_carpeta);
+			try
+			{
+				$s_nombre = $s_carpeta."/clave_".bin2hex(random_bytes(16)).".tmp";
+			}//try
+			catch(\Exception $e)
+			{
+				$s_nombre = "";
+			}//catch
+
+			//"x" no abre un archivo que ya exista; con umask no queda en 0644 hasta el chmod.
+			$i_umask = umask(0077);
+			$fd = $s_nombre !== "" ? @fopen($s_nombre, "x") : false;
+			umask($i_umask);
+			$b_ok = $fd !== false;
 		}//if
 
 		if($b_ok)
 		{
-			$fd = @fopen($s_tmp, "w");
-			$b_ok = $fd && fwrite($fd, $s_pem) === strlen($s_pem) && fflush($fd) && fsync($fd);
-			if($fd)
-			{
-				fclose($fd);
-			}//if
-			$b_ok = $b_ok && @chmod($s_tmp, 0600);
+			//Solo se borra lo que ha creado este fopen.
+			$s_tmp = $s_nombre;
+
+			//"x" sigue los enlaces rotos: antes de escribir, lo abierto debe ser el archivo de la ruta.
+			$a_stat = fstat($fd);
+			clearstatcache(true, $s_tmp);
+			$a_lstat = @lstat($s_tmp);
+			$b_ok = $a_stat && $a_lstat && ($a_lstat["mode"] & 0170000) === 0100000
+				&& (!$b_unix || ($a_stat["dev"] === $a_lstat["dev"] && $a_stat["ino"] === $a_lstat["ino"]));
+			$b_ok = $b_ok && @chmod($s_tmp, 0600) && (!$b_unix || (($a_stat = fstat($fd)) && !($a_stat["mode"] & 0077)));
+			$b_ok = $b_ok && fwrite($fd, $s_pem) === strlen($s_pem) && fflush($fd) && fsync($fd);
+			fclose($fd);
 		}//if
 
 		//link no pisa la clave que otra petición haya creado a la vez; rename, para sistemas sin enlaces duros.
@@ -191,7 +208,7 @@ class Cifrado
 	}//fun carpetaSegura
 
 
-	//Archivo normal (sin seguir enlaces), del usuario del proceso (solo con posix) y sin escritura de grupo ni de otros.
+	//Archivo normal (sin seguir enlaces), del usuario del proceso (solo con posix), sin escritura de grupo ni de otros y sin lectura de otros.
 	private static function leer($s_ruta)
 	{
 		$s_pem = false;
@@ -216,6 +233,10 @@ class Cifrado
 		elseif($b_unix && ($a_stat["mode"] & 0022))
 		{
 			$s_error = "la pueden escribir el grupo u otros usuarios";
+		}//elseif
+		elseif($b_unix && ($a_stat["mode"] & 0004))
+		{
+			$s_error = "la pueden leer otros usuarios";
 		}//elseif
 		else
 		{

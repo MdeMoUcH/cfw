@@ -5,6 +5,7 @@ Lo que hay que revisar al actualizar CFW en un proyecto ya construido con él. P
 Cada proyecto adapta estos ficheros, que no están en `specific` y no se actualizan solos:
 - `cfw/config.ini`:
   - `langs` de `config.ini` queda sin uso.
+  - Opción nueva y opcional `intentos.carpeta`, para guardar los contadores del límite de intentos en otra carpeta (ver «Límite de intentos» en «Despliegue» de [INSTALACION.md](INSTALACION.md)).
 - El `.htaccess` raíz.
 - `db.sql`:
   - La columna `pass` debe ser al menos `varchar(255)`.
@@ -28,7 +29,7 @@ Cada proyecto adapta estos ficheros, que no están en `specific` y no se actuali
 - En `AdminHelper::form`, una subida fallida deshace el alta con un `DELETE` físico (`Orm::eliminarFila`), y `guardarSubidas` devuelve `bool`.
 - `pass_valida` y `pass_hash` son funciones globales nuevas: no pueden repetirse en `cfw/specific/utils/functions.php`.
 - `t()` es global: una función `t` en `cfw/specific/utils/functions.php` da un fatal.
-- `intentos_archivo`, `intentos_bloqueado`, `intentos_fallo` e `intentos_limpiar` son funciones globales nuevas: no pueden repetirse en `cfw/specific/utils/functions.php`, porque PHP da un error fatal.
+- `intentos_carpeta`, `intentos_archivo`, `intentos_abrir`, `intentos_bloqueado`, `intentos_fallo` e `intentos_limpiar` son funciones globales nuevas: no pueden repetirse en `cfw/specific/utils/functions.php`, porque PHP da un error fatal.
 
 ## Plantillas y portada
 - Las plantillas ya no admiten PHP incrustado por `eval`.
@@ -65,6 +66,11 @@ Cada proyecto adapta estos ficheros, que no están en `specific` y no se actuali
 - `comprobarUserPass` recibe la contraseña real, no su md5.
 - `AdminHelper::editfield` ya no admite el campo `pass`.
 - El login ya no envía el md5 de la contraseña, sino la contraseña cifrada (ver «Contraseñas» en [README.md](README.md)). Se elimina `js/js-md5-0.9.2.min.js`: si un proyecto la usa en `specific`, debe conservar su propia copia.
+- La clave privada del cifrado se rechaza también si otros pueden leerla (por ejemplo 0644): los formularios muestran el aviso hasta corregirla con `chmod o-r` sobre el archivo.
+- Los contadores del límite de intentos pasan de `sys_get_temp_dir()/cfw_intentos/` a `cfw/data/intentos/` (ver «Límite de intentos» en «Despliegue» de [INSTALACION.md](INSTALACION.md)):
+  - Los bloqueos en curso se levantan. La carpeta antigua ya no se usa y se puede borrar.
+  - Apache necesita poder escribir en `cfw/data` para crearla, o hay que crearla a mano. Si no se puede crear o no es segura, el límite queda desactivado, con una línea `CFW:` en el log por petición.
+  - Una carpeta configurada con `intentos.carpeta` dentro de `/tmp`, o de otra carpeta con escritura para todos, no se acepta.
 
 ## JavaScript
 - El login usa jQuery 4.0.0 (`js/jquery-4.0.0.min.js`); los formularios con contraseña, node-forge 1.4.2 (`js/forge-1.4.2.min.js`) y `js/cifrado.js`; y el listado de `AdminHelper`, Prototype 1.7.3 (`js/prototype-1.7.3.js`) con TableKit 1.3b. Prototype 1.7.3 lleva el aviso CVE-2020-27511 (ReDoS en `stripTags` y `unescapeHTML`), sin parche: no pases datos de usuario a esas funciones.

@@ -153,31 +153,156 @@ function getIP(){
 define("CFW_INTENTOS_MAX", 5);
 define("CFW_INTENTOS_VENTANA", 900);
 
-function intentos_archivo($s_clave, $b_ip = true)
+//intentos.carpeta de config.ini, si es absoluta; si no, cfw/data/intentos. "" si no es segura (fallo abierto).
+//Se comprueba una vez por petición.
+function intentos_carpeta()
 {
-	$s_dir = sys_get_temp_dir()."/cfw_intentos/";
-	if(!is_dir($s_dir) && !@mkdir($s_dir, 0700, true) && !is_dir($s_dir))
+	static $s_carpeta = null;
+	if($s_carpeta !== null)
+	{
+		return $s_carpeta;
+	}//if
+	
+	$s_carpeta = "";
+	$b_unix = PHP_OS_FAMILY !== "Windows";
+	$s_defecto = dirname(__DIR__, 2)."/data/intentos";
+	$s_dir = $s_defecto;
+	
+	$app = new AppConf();
+	if(is_array($app->config) && array_key_exists("intentos.carpeta", $app->config))
+	{
+		//Sin barra final: lstat seguiría el enlace.
+		$s_dir = is_string($app->config["intentos.carpeta"]) ? rtrim(trim($app->config["intentos.carpeta"]), $b_unix ? "/" : "/\\") : "";
+		if(preg_match($b_unix ? '#^/#' : '#^[A-Za-z]:[\\\\/]#', $s_dir) !== 1)
+		{
+			error_log("CFW: intentos.carpeta no es una ruta absoluta (vacía, off/no/false/none o relativa); se usa ".$s_defecto);
+			$s_dir = $s_defecto;
+		}//if
+	}//if
+	
+	//Mismo criterio que Cifrado::carpetaSegura.
+	clearstatcache();
+	$a_padre = $b_unix ? @stat(dirname($s_dir)) : false;
+	$b_padre = !$a_padre || !($a_padre["mode"] & 0002);
+	
+	//No recursivo. Si falla, se vuelve a mirar por si otra petición la ha creado a la vez.
+	if($b_padre && @lstat($s_dir) === false && @mkdir($s_dir, 0700))
+	{
+		if($b_unix && !function_exists("posix_geteuid"))
+		{
+			error_log("CFW: sin la extensión posix no se comprueba el propietario de la carpeta de contadores de intentos");
+		}//if
+	}//if
+	clearstatcache();
+	$a_lstat = $b_padre ? @lstat($s_dir) : false;
+	
+	$s_error = "";
+	if(!$b_padre)
+	{
+		$s_error = "su carpeta padre la pueden escribir todos los usuarios";
+	}//if
+	elseif(!$a_lstat)
 	{
 		error_log("CFW: no se pudo crear ".$s_dir);
+	}//elseif
+	elseif(($a_lstat["mode"] & 0170000) !== 0040000)
+	{
+		$s_error = "es un enlace o no es una carpeta";
+	}//elseif
+	elseif($b_unix && function_exists("posix_geteuid") && $a_lstat["uid"] !== ($i_uid = posix_geteuid()))
+	{
+		$s_error = "no es del usuario del proceso (uid ".$i_uid.")";
+	}//elseif
+	elseif($b_unix && ($a_lstat["mode"] & 0022))
+	{
+		$s_error = "la pueden escribir el grupo u otros usuarios";
+	}//elseif
+	else
+	{
+		$s_carpeta = $s_dir;
+	}//else
+	
+	if($s_error !== "")
+	{
+		error_log("CFW: carpeta de contadores de intentos rechazada, ".$s_error.": ".$s_dir);
+	}//if
+	
+	return $s_carpeta;
+}//fun intentos_carpeta
+
+
+function intentos_archivo($s_clave, $b_ip = true)
+{
+	$s_dir = intentos_carpeta();
+	if($s_dir === "")
+	{
 		return "";
 	}//if
 	
 	//Normaliza como Orm::filtro. Las variantes del cotejamiento (ŭ, ſ) las resuelve login con el email guardado.
-	return $s_dir.md5(($b_ip ? get_ip()."|" : "").strtolower(trim(strip_tags(trim((string)$s_clave)))));
+	return $s_dir."/".md5(($b_ip ? get_ip()."|" : "").strtolower(trim(strip_tags(trim((string)$s_clave)))));
 }//fun intentos_archivo
+
+
+//Abre un contador sin seguir enlaces: archivo normal, el mismo que la ruta (dev/ino) y, en Unix, sin enlaces duros.
+function intentos_abrir($s_archivo, $b_escribir)
+{
+	$b_unix = PHP_OS_FAMILY !== "Windows";
+	$fd = false;
+	clearstatcache(true, $s_archivo);
+	$a_antes = @lstat($s_archivo);
+	
+	//"x+" sigue los enlaces rotos: solo se usa si no hay nada en la ruta, y se comprueba después.
+	if($a_antes === false && $b_escribir && !($fd = @fopen($s_archivo, "x+")))
+	{
+		clearstatcache(true, $s_archivo);
+		$a_antes = @lstat($s_archivo);
+	}//if
+	
+	if(!$fd && $a_antes === false)
+	{
+		return false;
+	}//if
+	
+	if(!$fd && ($a_antes["mode"] & 0170000) === 0100000 && !($fd = @fopen($s_archivo, $b_escribir ? "r+" : "r")))
+	{
+		return false;
+	}//if
+	
+	$a_stat = $fd ? fstat($fd) : false;
+	clearstatcache(true, $s_archivo);
+	$a_lstat = @lstat($s_archivo);
+	if($a_stat && $a_lstat && ($a_stat["mode"] & 0170000) === 0100000 && ($a_lstat["mode"] & 0170000) === 0100000
+		&& (!$b_unix || ($a_stat["dev"] === $a_lstat["dev"] && $a_stat["ino"] === $a_lstat["ino"] && $a_stat["nlink"] === 1)))
+	{
+		return $fd;
+	}//if
+	
+	if($fd)
+	{
+		fclose($fd);
+	}//if
+	error_log("CFW: contador de intentos rechazado (enlace, enlace duro o no es un archivo normal) en ".dirname($s_archivo));
+	
+	return false;
+}//fun intentos_abrir
 
 
 function intentos_bloqueado($s_clave, $b_ip = true)
 {
 	$s_archivo = intentos_archivo($s_clave, $b_ip);
-	if($s_archivo == "" || !is_file($s_archivo))
+	$fd = $s_archivo != "" ? intentos_abrir($s_archivo, false) : false;
+	if(!$fd)
 	{
 		return false;
 	}//if
 	
-	clearstatcache(true, $s_archivo);
-	return (time() - filemtime($s_archivo)) < CFW_INTENTOS_VENTANA
-		&& (int)file_get_contents($s_archivo) >= CFW_INTENTOS_MAX;
+	$a_stat = fstat($fd);
+	$b_bloqueado = (time() - $a_stat["mtime"]) < CFW_INTENTOS_VENTANA
+		&& (int)stream_get_contents($fd) >= CFW_INTENTOS_MAX;
+	fclose($fd);
+	
+	return $b_bloqueado;
 }//fun intentos_bloqueado
 
 
@@ -189,10 +314,10 @@ function intentos_fallo($s_clave, $b_ip = true)
 		return;
 	}//if
 	
-	$fd = @fopen($s_archivo, "c+");
+	$fd = intentos_abrir($s_archivo, true);
 	if(!$fd || !flock($fd, LOCK_EX))
 	{
-		error_log("CFW: no se pudo escribir ".$s_archivo);
+		error_log("CFW: no se pudo escribir un contador de intentos en ".dirname($s_archivo));
 		return;
 	}//if
 	
