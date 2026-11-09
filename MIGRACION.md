@@ -1,6 +1,8 @@
 # Migrar un sitio basado en CFW a esta versión
 Lo que hay que revisar al actualizar CFW en un proyecto ya construido con él. Para saber cómo funciona CFW, ver [README.md](README.md); para requisitos, permisos y despliegue, [INSTALACION.md](INSTALACION.md).
 
+Esta versión exige PHP 8.2, la extensión `openssl` (sin ella no hay login) y Apache 2.4.10 con `mod_headers`, y se recomienda la extensión `posix`. Apache necesita escritura en `cfw/data` para generar la clave privada del cifrado: si no la tiene, el login muestra un aviso en lugar del formulario. Ver «Requisitos» y «Clave privada del cifrado» en [INSTALACION.md](INSTALACION.md).
+
 ## Archivos que revisar a mano
 Cada proyecto adapta estos ficheros, que no están en `specific` y no se actualizan solos:
 - `cfw/config.ini`:
@@ -9,12 +11,20 @@ Cada proyecto adapta estos ficheros, que no están en `specific` y no se actuali
 - El `.htaccess` raíz.
   - El bloque `<IfModule mod_headers.c>` de las cabeceras de seguridad es nuevo: cópialo y activa `mod_headers` (ver «Requisitos» en [INSTALACION.md](INSTALACION.md)). Sin el módulo no da error, pero los estáticos y los errores de Apache quedan sin esas cabeceras.
   - Apache solo pone cada cabecera si la respuesta no la trae ya.
+  - Responde 403 a los archivos ocultos (salvo `.well-known`), a todo `cfw/` y a los `.ini`, `.sql`, `.tpl` y `.md`.
+  - `/uploads` redirige a `/` del propio sitio, no a `http://localhost/`.
+  - Se quitan las reglas de `/login/register` y `/login/restorepassword`, que no tenían método.
+- `cfw/data/.htaccess`, nuevo: cópialo también.
 - `db.sql`:
   - La columna `pass` debe ser al menos `varchar(255)`.
 - `css/`, `js/` e `img/`.
 - Las copias propias de páginas, clases, plantillas y textos en `cfw/specific/`.
 
 ## Peticiones y acceso
+- El login exige `activo = 1`: las cuentas con `activo = 0` dejan de poder entrar.
+- El `db.sql` anterior creaba el administrador `m@m.es` con una contraseña trivial y conocida y `activo` a 0. Bórralo o cámbiale la contraseña al migrar.
+- `cuenta`, `users`, `idiomas` y las páginas de `AdminHelper` comprueban en la BD, en cada petición, que el usuario sigue activo y, en administración, que sigue siendo administrador: si no, la sesión se cierra. Si la BD falla, responden 503.
+- Las subclases de `AdminHelper` exigen un administrador desde el constructor (`exigirAdmin`). Si una define su propio constructor, debe llamar a `parent::__construct()`; si no, no se exige.
 - Los formularios POST manuales necesitan el campo `csrf`. `Form` lo añade solo, y en una plantilla está disponible como `{csrf}`. Sin token la respuesta es 403.
 - `login/logout` y `delete` de `AdminHelper` solo actúan por POST.
 - Los métodos de `App` y `Page` (y sus redefiniciones) ya no son accesibles por URL.
@@ -31,7 +41,10 @@ Cada proyecto adapta estos ficheros, que no están en `specific` y no se actuali
 - Se eliminan `comprobarInvitado`, `getLastUserByFkIdUsuario` y `getUsersByFkIdUsuario` de `Usuarios`.
 - PHP 8.2 da `Deprecated` con las propiedades dinámicas: las subclases de `cfw/specific/` deben declarar las suyas, con una visibilidad compatible con la del padre. `private` da un fatal, y `protected` también si el padre la declara `public`, como `$tabla` en `Orm` o `$vars` en `Page`.
 - Se eliminan la función global `saveImage` y `cfw/general/utils/images.php` (`saveImageProductos`). Usa `AdminHelper::saveImage`.
-- `main` solo pinta las plantillas de `$a_plantillas_permitidas`. Una subclase de `cfw/specific/` que use otras debe ampliar esa propiedad.
+- `main` solo pinta las plantillas de `$a_plantillas_permitidas`. Una `main` propia en `cfw/specific/pages/main.php` sustituye entera a la de `general`, sin heredar nada (ver los límites de «Qué se puede redefinir en `specific`» en [README.md](README.md)), así que debe partir de la `main` nueva y declarar su propia `$a_plantillas_permitidas`, con `portada`: una copiada de la versión anterior no tiene esa lista. Ampliar la propiedad solo vale en una subclase de `main` con otro nombre.
+- `Page` tiene métodos `protected` nuevos: `redirigir`, `exigirUsuario`, `exigirAdmin`, `guardarFlash`, `leerFlash`, `prepararCifrado`, `leerPassCifradas` y `textoFalloCifrado`. Un método con el mismo nombre en una subclase los redefine, y con una firma o una visibilidad incompatibles da un error fatal.
+- `login::init()` ya no recibe un mensaje (antes `init($s_mensaje = "")`). Para llegar al login con un aviso, guarda con `guardarFlash` la clave de `textos.ini` del aviso, no el texto, y usa `redirigir`, como hace `cuenta`.
+- `Orm` solo acepta ids formados por dígitos en `getById`, `getActivoById`, `delete`, `update`, `updateField` y los demás métodos que reciben un id: con otro valor devuelven `false` y añaden un error a `errores`. `update` y `updateField` no escriben la clave primaria, y `updateField` solo admite columnas de `$campos`.
 - En `AdminHelper::form`, una subida fallida deshace el alta con un `DELETE` físico (`Orm::eliminarFila`), y `guardarSubidas` devuelve `bool`.
 - `pass_valida` y `pass_hash` son funciones globales nuevas: no pueden repetirse en `cfw/specific/utils/functions.php`.
 - `t()` es global: una función `t` en `cfw/specific/utils/functions.php` da un fatal.
@@ -40,7 +53,7 @@ Cada proyecto adapta estos ficheros, que no están en `specific` y no se actuali
 ## Plantillas y portada
 - Las plantillas ya no admiten PHP incrustado por `eval`.
 - Los valores con `'` se guardan como `&#039;`. Escapa la salida con `escapar()`, que no codifica dos veces.
-- La portada usa `portada.tpl` y `portada.ini`: `titulo` y `mensaje` de `main.ini` ya no se muestran en ella, y `/admin/main/init/main` da 404. `main.tpl` sigue en uso para `AdminHelper::delete`. Para personalizar la portada, usa `cfw/specific/lang/<código>/portada.ini` o `cfw/specific/templates/portada.tpl`. Una subclase de `main` con su propia lista de plantillas debe incluir `portada`. Un sitio derivado debe sustituir esta portada en producción, porque publica el framework y sus versiones.
+- La portada usa `portada.tpl` y `portada.ini`: `titulo` y `mensaje` de `main.ini` ya no se muestran en ella, y `/admin/main/init/main` da 404. `main.tpl` sigue en uso para `AdminHelper::delete`. Para personalizar la portada, usa `cfw/specific/lang/<código>/portada.ini` o `cfw/specific/templates/portada.tpl`. Una `main` propia en `cfw/specific/pages/main.php` debe declarar su lista de plantillas con `portada` (ver «Páginas, clases y funciones»). Un sitio derivado debe sustituir esta portada en producción, porque publica el framework y sus versiones.
 - El formulario de datos de `cuenta` pasa a `web/cuenta_usuario.tpl`, con `data-cifrar` y sin `name` en las contraseñas. `web/cuenta.tpl` lo pinta con `{aviso_cifrado}` y `{form_usuario}`. Si el sitio tiene su propia copia de `web/cuenta.tpl` en `cfw/specific/templates/`, actualízala: con la antigua no se ve el formulario nuevo, o las contraseñas se envían en claro y el servidor responde «formulario caducado».
 
 ## Aspecto
@@ -76,7 +89,7 @@ Cada proyecto adapta estos ficheros, que no están en `specific` y no se actuali
 - La clave privada del cifrado se rechaza también si otros pueden leerla (por ejemplo 0644): los formularios muestran el aviso hasta corregirla con `chmod o-r` sobre el archivo.
 - Los contadores del límite de intentos pasan de `sys_get_temp_dir()/cfw_intentos/` a `cfw/data/intentos/` (ver «Límite de intentos» en «Despliegue» de [INSTALACION.md](INSTALACION.md)):
   - Los bloqueos en curso se levantan. La carpeta antigua ya no se usa y se puede borrar.
-  - Apache necesita poder escribir en `cfw/data` para crearla, o hay que crearla a mano. Si no se puede crear o no es segura, el límite queda desactivado, con una línea `CFW:` en el log por petición.
+  - Apache necesita poder escribir en `cfw/data` para crearla, o hay que crearla a mano. Si no se puede crear o no es segura, el límite queda desactivado, con una línea `CFW:` en el log en cada intento de login o de guardado en `cuenta` con la contraseña actual.
   - Una carpeta configurada con `intentos.carpeta` dentro de `/tmp`, o de otra carpeta con escritura para todos, no se acepta.
 
 ## JavaScript

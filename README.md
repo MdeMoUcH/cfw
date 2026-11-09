@@ -10,7 +10,7 @@ CFW es un framework MVC en PHP que da una base con opciones básicas: portada, l
 Las piezas MVC son:
 - **Controlador:** las clases de `pages/`, que heredan de `Page`.
 - **Modelo:** las clases de `orm/`, que heredan de `Orm`.
-- **Vista:** las plantillas `.tpl` de `templates/`, con `Template`.
+- **Vista:** las plantillas `.tpl` de `templates/`, con `Template`. En ellas, `{nombre}` toma su valor de `$tpl->vars`, del `.ini` de la plantilla o, si empieza por `text_`, de `textos.ini`, y `{csrf}` da el token CSRF. Lo que no tenga valor queda vacío, salvo un `text_` que falte, que sale con su nombre, y los valores no se vuelven a expandir.
 
 ## Documentación
 - [INSTALACION.md](INSTALACION.md): requisitos, puesta en marcha, protección de `cfw/` con `.htaccess`, permisos de `cfw/data`, clave privada del cifrado y despliegue.
@@ -30,7 +30,7 @@ Una petición se traduce en clase, método y hasta dos argumentos:
 
 Solo son accesibles por URL los métodos públicos declarados en la página. Los de `App` y `Page`, los estáticos y los que empiezan por `__` no lo son. Los POST exigen un token CSRF válido.
 
-El `.htaccess` raíz solo define las rutas `/admin/...` y `/login`. Otra URL pública, como `/contacto`, necesita su propia regla en ese fichero o usar `index.php?uno=contacto`.
+El `.htaccess` raíz solo define las rutas `/admin/...` y `/login`, además de `/404/`, que pinta la página de error. Otra URL pública, como `/contacto`, necesita su propia regla en ese fichero o usar `index.php?uno=contacto`.
 
 ## Qué se puede redefinir en `specific`
 
@@ -58,16 +58,16 @@ La opción de multiidioma se gestiona en `/admin/idiomas` y se guarda en `cfw/da
 
 Antes de usarla, Apache necesita permiso de escritura sobre `cfw/data/`: ver «Carpeta `cfw/data` y permisos» en [INSTALACION.md](INSTALACION.md).
 
-Para añadir un idioma, crea `cfw/general/lang/<código>/textos.ini`, con un código de dos letras minúsculas y `nombre_idioma`; las claves que falten salen en `lang_default`. Los valores van entre comillas dobles y no pueden contener comillas dobles. Si el valor lleva HTML o datos, escápalos antes de pasarlos a `t()`.
+Para añadir un idioma, crea `cfw/general/lang/<código>/textos.ini` o `cfw/specific/lang/<código>/textos.ini`, con un código de dos letras minúsculas y `nombre_idioma`; las claves que falten salen en `lang_default`. Si `lang_default` no tiene un `textos.ini` válido, se usa `es`. Los valores van entre comillas dobles y no pueden contener comillas dobles. Si el valor lleva HTML o datos, escápalos antes de pasarlos a `t()`.
 
 ## Contraseñas
 Se guardan con `password_hash` (`PASSWORD_DEFAULT`) y se comprueban con `password_verify`.
 
 **Envío cifrado.** El navegador no envía la contraseña en claro ni en md5:
 - `js/cifrado.js` cifra `1|<nonce>|<campo>|<contraseña>` con RSA-OAEP (SHA-1) y la clave pública del servidor, usando node-forge. El servidor la descifra con openssl y comprueba que el nonce es de su sesión, no ha caducado (30 minutos) y no se ha usado.
-- Cada formulario pintado lleva un nonce de un solo uso: un POST capturado no se puede reenviar, y un formulario antiguo o enviado dos veces muestra «formulario caducado».
+- Cada formulario pintado lleva un nonce de un solo uso: un POST capturado no se puede reenviar, y un formulario antiguo o enviado dos veces muestra «formulario caducado». Se guardan los 20 nonces más recientes de cada sesión: abrir más formularios hace caducar los más antiguos.
 - Los campos son del tipo `password_cifrado` de `Form` (o `data-cifrar="<campo>"` en una plantilla). No tienen `name`: si el cifrado falla, no se envía nada. En el controlador, `Page::prepararCifrado()` prepara la página y `Page::leerPassCifradas()` devuelve las contraseñas descifradas.
-- Sin JavaScript no se puede iniciar sesión, cambiar la contraseña ni dar de alta usuarios.
+- Sin JavaScript no se puede iniciar sesión, guardar los datos de `cuenta` (también el email, que exige la contraseña actual), cambiar la contraseña ni dar de alta usuarios.
 - **Límites:** no sustituye a HTTPS. Sin él, quien controle la red puede modificar el JavaScript o la clave pública que se sirven y capturar la contraseña, o robar la cookie de sesión. Con la sesión de un administrador se pueden cambiar las contraseñas de otros usuarios en `/admin/users` sin reautenticarse.
 
 **Clave privada:** se genera sola en el primer uso. Su ubicación, permisos, rotación y generación a mano están en «Clave privada del cifrado» de [INSTALACION.md](INSTALACION.md).
@@ -80,7 +80,8 @@ Los md5 de versiones anteriores se convierten a `password_hash` en el primer log
 **Protecciones incluidas:**
 - Los POST exigen un token CSRF válido.
 - Solo son accesibles por URL los métodos públicos declarados en la página, no los de `App` ni `Page` (ver «Enrutamiento»).
-- La cookie de sesión es HttpOnly y SameSite=Lax, y el id de sesión se regenera al entrar y al salir.
+- La cookie de sesión es HttpOnly y SameSite=Lax, y el id de sesión se regenera al entrar y al salir. Es `Secure` solo si PHP recibe la petición por HTTPS (`$_SERVER["HTTPS"]`).
+- `cuenta`, `users`, `idiomas` y las páginas de `AdminHelper` comprueban en la BD, en cada petición, que el usuario sigue activo y, en las de administración, que sigue siendo administrador; si no, cierran la sesión y llevan al login. Si la BD falla, responden 503. Las páginas propias que exijan sesión deben llamar a `$this->exigirUsuario()` o a `$this->exigirAdmin()` en su constructor. Una subclase de `AdminHelper` con constructor propio debe llamar a `parent::__construct()`; si no, no exige administrador.
 - Contraseñas con `password_hash` y enviadas cifradas (ver «Contraseñas»).
 - **Clickjacking:** las páginas no se pueden enmarcar en un iframe, ni desde otra web ni desde el mismo sitio (`X-Frame-Options: DENY` y `frame-ancestors 'none'`). Se envían también `X-Content-Type-Options: nosniff` y `Referrer-Policy: strict-origin-when-cross-origin`. Fuera de PHP (estáticos y errores de Apache) dependen de `mod_headers`: ver «Requisitos» en [INSTALACION.md](INSTALACION.md).
 - **Límite de intentos:** el login admite 5 fallos por IP y email; al llegar al límite, ese email no puede entrar desde esa IP. En `cuenta`, la contraseña actual admite 5 fallos por usuario, sin IP; al llegar al límite se cierra la sesión y se vuelve al login con un aviso. Los fallos se acumulan mientras entre uno y otro pasen menos de 15 minutos, y el bloqueo dura 15 minutos desde el último fallo.
@@ -92,6 +93,9 @@ Los md5 de versiones anteriores se convierten a `password_hash` en el primer log
 - Prototype 1.7.3 lleva el aviso CVE-2020-27511 (ReDoS en `stripTags` y `unescapeHTML`), sin parche: no pases datos de usuario a esas funciones.
 - El límite del login cuenta por IP y email: no frena a quien prueba un mismo email desde muchas IP, ni a quien prueba muchos emails desde una sola IP.
 - Quien robe una sesión puede bloquear `cuenta` de ese usuario durante 15 minutos desde el último fallo, fallando la contraseña actual. Detrás de un proxy todos los visitantes comparten `REMOTE_ADDR` y, por tanto, el contador del login: ver «Despliegue» en [INSTALACION.md](INSTALACION.md).
+- Cambiar la contraseña no cierra las demás sesiones del usuario.
+- Detrás de un proxy que termina el TLS, PHP no ve HTTPS y la cookie de sesión va sin `Secure`: ver «Despliegue» en [INSTALACION.md](INSTALACION.md).
+- No uses `AdminHelper::form` ni `AdminHelper::edit` con el ORM `Usuarios`: guardarían `pass` tal como llega, sin `pass_hash` ni las validaciones de `users`.
 
 ## Librerías de terceros
 - El login usa jQuery 4.0.0 (`js/jquery-4.0.0.min.js`); los formularios con contraseña, node-forge 1.4.2 (`js/forge-1.4.2.min.js`) y `js/cifrado.js`; y el listado de `AdminHelper`, Prototype 1.7.3 (`js/prototype-1.7.3.js`) con TableKit 1.3b.
