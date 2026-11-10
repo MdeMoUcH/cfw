@@ -35,7 +35,7 @@ Lo único que impide descargar `cfw/` son el `.htaccess` raíz y `cfw/data/.htac
 ## Carpeta `cfw/data` y permisos
 Apache escribe en `cfw/data/` la clave privada del cifrado y los contadores del límite de intentos (`cfw/data/intentos/`), si no se configura otra ubicación, y la opción de multiidioma, `cfw/data/idiomas.ini` (ver «Idiomas» en [README.md](README.md)).
 
-Antes de usarla, da a Apache permiso sobre la carpeta. La aplicación crea el fichero la primera vez que guardas:
+Antes de usarla, da a Apache permiso sobre la carpeta. La aplicación crea el fichero la primera vez que guardas. Esta orden, como todas las de este documento con rutas relativas, se ejecuta desde la raíz del sitio:
 ```
 chgrp www-data cfw/data && chmod 770 cfw/data
 ```
@@ -46,18 +46,25 @@ chgrp www-data cfw/data && chmod 770 cfw/data
     ```
     sudo -u www-data find . -path ./cfw/data -prune -o \( -writable -o -user www-data \) -print
     ```
-    En esas rutas también salen los contadores de intentos de la carpeta y, si Apache las crea, la carpeta que las contiene, porque tiene que poder escribir en ella (ver «Creación» en «Despliegue»). Esa carpeta tiene que ser propia, solo para esas rutas, nunca `cfw/`, `cfw/general` ni `cfw/specific`. Si no, crea las rutas a mano, para que la carpeta que las contiene quede sin escritura para Apache: la de intentos, con el `install -d` de «Creación», y la clave, generándola a mano (ver «Clave privada del cifrado»). Si sale una clave privada fuera de `cfw/`, hay que moverla y rotarla (ver «Otra ubicación» y «Para rotarla» en «Clave privada del cifrado»).
+    En esas rutas también salen los contadores de intentos de la carpeta y, si Apache puede escribir en ella o es su propietario, la carpeta que las contiene. Esa carpeta tiene que ser propia, solo para esas rutas, nunca `cfw/`, `cfw/general` ni `cfw/specific`, aunque después le quites la escritura: la carpeta de intentos y la clave las crea siempre Apache, también a mano, así que tiene que poder escribir en ella al menos mientras tanto (ver «Creación» en «Despliegue» y «Clave privada del cifrado»). Si sale una clave privada fuera de `cfw/`, hay que moverla y rotarla (ver «Otra ubicación» y «Para rotarla» en «Clave privada del cifrado»).
     Un «Permission denied» (sale por stderr) indica una carpeta que Apache no puede leer y que, por tanto, no ha quedado comprobada.
 
 ## Clave privada del cifrado
 `cfw/data/clave_privada.pem` por defecto, RSA de 3072 bits.
 - Se genera sola en el primer uso, con permisos 0600, si Apache puede escribir en `cfw/data/` (ver «Carpeta `cfw/data` y permisos»). Si no puede, o la clave no es válida, se muestra un aviso en lugar de los formularios con contraseña (en `users` solo se puede editar sin cambiarla) y el log una línea `CFW:`; un archivo no válido no se sobrescribe.
-- También se puede generar a mano, como el usuario de Apache: `sudo -u www-data openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:3072 -out cfw/data/clave_privada.pem`. Se acepta una clave RSA de 2048 bits o más.
+- También se puede generar a mano, siempre como Apache. Así la clave pasa de `openssl` directamente a su archivo, que queda de `www-data` y en 0600, sin copias en temporales ni en el historial:
+  ```
+  sudo -u www-data sh -c 'umask 077 && openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:3072 -out cfw/data/clave_privada.pem'
+  ```
+  - Apache tiene que poder escribir en la carpeta. Si no puede (por ejemplo, con `cfw/data` en 550), dale la escritura solo mientras la borras y la generas, y quítasela después. Con la carpeta del grupo `www-data`, como en «Carpeta `cfw/data` y permisos», es `chmod g+w cfw/data` antes y `chmod g-w cfw/data` después, con `sudo` si no eres su propietario; si no es de ese grupo (por ejemplo, tras un clon nuevo), pásala antes con `chgrp www-data cfw/data`. Si el propietario es Apache, `u+w` y `u-w`.
+  - Si ya hay algo con ese nombre (por ejemplo, una clave no válida), bórralo antes, también como Apache: `sudo -u www-data rm cfw/data/clave_privada.pem`.
+  - No ejecutes como root ninguna orden dentro de la carpeta de la clave ni sobre la clave, tampoco con la escritura quitada: root seguiría un enlace que `www-data` hubiera puesto con ese nombre y acabaría sobrescribiendo otro archivo del sistema o dándoselo a `www-data`. Las órdenes sobre la propia carpeta, como las de arriba, son seguras, porque Apache no puede escribir en `cfw/`.
+  - Comprueba que el archivo existe antes de seguir: algunas versiones de `openssl` terminan sin error aunque no hayan podido escribirlo. Se acepta una clave RSA de 2048 bits o más.
 - **Permisos exigidos.** Si no se cumplen, la clave se rechaza sin sobrescribirla (aviso en los formularios y una línea `CFW:` en el log):
-  - El archivo debe ser un archivo normal, no un enlace, cuyo propietario sea el usuario con el que corre PHP (`www-data`, o el de la cuenta con PHP-FPM o suEXEC; solo se comprueba con `posix`, ver abajo). Ni el grupo ni otros pueden tener escritura sobre él, y otros tampoco lectura: 0600, 0640, 0400 o 0440. Para corregirlo: `chown www-data cfw/data/clave_privada.pem && chmod 600 cfw/data/clave_privada.pem`.
+  - El archivo debe ser un archivo normal, no un enlace, cuyo propietario sea el usuario con el que corre PHP (`www-data`, o el de la cuenta con PHP-FPM o suEXEC; solo se comprueba con `posix`, ver abajo). Ni el grupo ni otros pueden tener escritura sobre él, y otros tampoco lectura: 0600, 0640, 0400 o 0440. Para corregirlo, bórrala como Apache (`sudo -u www-data rm cfw/data/clave_privada.pem`) y genérala de nuevo, con la escritura temporal si hace falta (ver arriba).
   - La carpeta no puede tener escritura para todos (por ejemplo 777 o `/tmp`). Se admite la de grupo, como el 775 de un clon o el 770 con el grupo de Apache (ver «Carpeta `cfw/data` y permisos»), y cualquier propietario, también root. Para corregirlo: `chmod o-w cfw/data`. La carpeta de los contadores de intentos sigue la misma regla para la carpeta que la contiene (ver «Despliegue»).
   - El propietario solo se comprueba con la extensión `posix`, que se recomienda tener. Sin ella la garantía es más débil: se acepta una clave de cualquier propietario si cumple el resto (archivo normal, sin escritura de grupo ni de otros ni lectura de otros, carpeta sin escritura para todos), y al generarla queda una línea `CFW:` en el log que lo avisa. En Windows no se comprueban propietario ni permisos, solo que no sea un enlace.
-- Para rotarla, bórrala: se crea otra en la siguiente petición. Solo fallan una vez los formularios que estaban abiertos.
+- Para rotarla, bórrala como Apache. Si Apache puede escribir en la carpeta, se crea otra en la siguiente petición; si no, dale la escritura temporal para borrarla y generar otra a mano (ver arriba). Solo fallan una vez los formularios que estaban abiertos. Rotarla también levanta los bloqueos en curso del límite de intentos, porque los nombres de los contadores dependen de ella (ver «Límite de intentos» en «Despliegue»).
 - En `cfw/data/` solo la protegen el `.htaccess` raíz y `cfw/data/.htaccess`. Si el servidor no los aplica (nginx o `AllowOverride None`), se puede descargar sin que se avise de nada: ver «Protección de `cfw/` con `.htaccess`». Con varios servidores, todos deben compartir la misma clave.
 - **Otra ubicación**, por ejemplo fuera de la raíz web: añade a `cfw/config.ini` la opción `cifrado.clave_privada` con la ruta absoluta del archivo, en su propia sección:
   ```
@@ -65,7 +72,7 @@ chgrp www-data cfw/data && chmod 770 cfw/data
   cifrado.clave_privada = "/srv/cfw-claves/clave_privada.pem"
   ```
   - Es opcional: si la línea no está, se usa `cfw/data/clave_privada.pem`. Si está, debe ser una ruta absoluta (`/…`; en Windows, `C:\…` o `C:/…`); se ignoran los espacios del principio y del final. Un valor vacío, relativo o que `parse_ini_file` convierte en vacío (`off`, `no`, `false`, `none`) no se acepta: los formularios muestran el aviso y el log una línea `CFW:`. Para volver a la ruta por defecto, borra o comenta la línea.
-  - PHP debe poder leer el archivo (también con `open_basedir`, si lo usas). Se aplican los mismos permisos exigidos de arriba. Para que se genere solo, Apache tiene que poder escribir en la carpeta. Si no, genérala a mano con la orden de arriba y esa ruta; así la carpeta puede quedar sin escritura para Apache, que es lo más seguro. No uses una carpeta compartida ni una dentro de la raíz web y fuera de `cfw/`.
+  - PHP debe poder leer el archivo (también con `open_basedir`, si lo usas). Se aplican los mismos permisos exigidos de arriba. Para que se genere solo, Apache tiene que poder escribir en la carpeta. Si no, genérala a mano como se explica arriba, con esa ruta y dando la escritura temporal en su carpeta, no en `cfw/data` (si no es del grupo `www-data`, pásala antes a ese grupo, por ejemplo con `sudo chgrp www-data /srv/cfw-claves`). Después la carpeta puede quedar sin escritura para Apache, que es lo más seguro. Apache tampoco debe poder escribir en la carpeta que la contiene ni ser su propietario, porque podría cambiarla por un enlace. No uses una carpeta compartida ni una dentro de la raíz web y fuera de `cfw/`.
 
 ## Despliegue
 - **Multiidioma** (`cfw/data/idiomas.ini`):
@@ -78,17 +85,24 @@ chgrp www-data cfw/data && chmod 770 cfw/data
   - **Otra carpeta**, por ejemplo fuera de la raíz web: añade a `cfw/config.ini` la opción `intentos.carpeta`, en su propia sección:
     ```
     [intentos]
-    intentos.carpeta = "/var/lib/cfw-intentos"
+    intentos.carpeta = "/srv/cfw-intentos/intentos"
     ```
     Las reglas de la ruta son las de `cifrado.clave_privada`: absoluta (`/…`; en Windows, `C:\…` o `C:/…`) y sin los espacios del principio y del final; además se quitan las barras finales. A diferencia de la clave, un valor no válido (vacío, `off`, `no`, `false`, `none`, relativo o `/`) no desactiva nada: se usa `cfw/data/intentos` y queda una línea `CFW:` en el log en cada intento de login o de guardado en `cuenta` con la contraseña actual.
+    La carpeta que la contiene (en el ejemplo, `/srv/cfw-intentos`) tiene que ser propia, como la de la clave en «Otra ubicación», porque Apache crea en ella la de intentos (ver «Creación»). Apache tampoco debe poder escribir en la carpeta que contiene esta ni ser su propietario.
   - **Comprobaciones de la carpeta**, al crearla y en cada petición que la usa:
     - La carpeta no puede ser un enlace (solo se comprueba la última parte de la ruta).
     - Su propietario debe ser el usuario con el que corre PHP (solo con la extensión `posix`; sin ella queda una línea `CFW:` al crearla).
-    - Ni el grupo ni otros pueden tener escritura sobre ella: 0700, 0750 o 0755. Se recomienda 0700, el modo con que la crea la aplicación: con 0750 o 0755, el grupo u otros usuarios pueden listar los contadores, y los nombres de los del login son el md5 de la IP y el email, sin sal, que se puede invertir.
+    - Ni el grupo ni otros pueden tener escritura sobre ella: 0700, 0750 o 0755. Se recomienda 0700, el modo con que la crea la aplicación: con 0750 o 0755, el grupo u otros usuarios pueden listar los contadores y ven cuántos hay, cuándo se escribieron y su número de fallos. No ven la IP ni el email: el nombre de cada contador es un HMAC-SHA256 de la IP y el email (en `cuenta`, del usuario) con un secreto derivado de la clave privada, y no se puede invertir sin ella.
     - La carpeta que la contiene no puede tener escritura para todos (por ejemplo 777 o `/tmp`), la misma regla que la carpeta de la clave privada. Se admite la de grupo, como el 775 de un clon.
     - En Windows solo se comprueba que no sea un enlace.
-  - **Si una comprobación falla**, el límite queda desactivado (fallo abierto) y el log tiene una línea `CFW:` en cada intento de login o de guardado en `cuenta` con la contraseña actual. Una ruta absoluta configurada que no cumple no vuelve a `cfw/data/intentos`: por ejemplo, `intentos.carpeta = "/tmp/algo"` deja el límite desactivado. Los contadores que son enlaces, enlaces duros o no son archivos normales se rechazan, sin escribir en ellos.
-  - **Creación:** la carpeta se crea sola, en 0700, si existe la carpeta que la contiene y Apache puede escribir en ella. Si no (por ejemplo, con `cfw/data` en 555), créala a mano: `install -d -o www-data -m 700 cfw/data/intentos`.
+  - **Si una comprobación falla**, o no hay una clave privada válida (ver «Clave privada del cifrado»), el límite queda desactivado (fallo abierto) y el log tiene una línea `CFW:` en cada intento de login o de guardado en `cuenta` con la contraseña actual. Una ruta absoluta configurada que no cumple no vuelve a `cfw/data/intentos`: por ejemplo, `intentos.carpeta = "/tmp/algo"` deja el límite desactivado. Los contadores que son enlaces, enlaces duros o no son archivos normales se rechazan, sin escribir en ellos.
+  - **Creación:** la carpeta se crea sola, en 0700, si existe la carpeta que la contiene y Apache puede escribir en ella. Si no (por ejemplo, con `cfw/data` en 555), créala a mano, siempre como Apache (con `intentos.carpeta`, usa esa ruta):
+    ```
+    sudo -u www-data mkdir -m 700 cfw/data/intentos
+    ```
+    - Si Apache no puede escribir en la carpeta que la contiene, dale la escritura solo mientras la creas, como para la clave (ver «Clave privada del cifrado»): con el grupo `www-data`, `chmod g+w` antes y `chmod g-w` después, pasándola antes a ese grupo con `chgrp www-data` si no lo es; si el propietario es Apache, `u+w` y `u-w`.
+    - Si ya hay algo con ese nombre que no es una carpeta válida (por ejemplo, un enlace), bórralo antes, también como Apache y con la misma escritura temporal: `sudo -u www-data rm -r cfw/data/intentos`.
+    - No ejecutes como root ninguna orden dentro de la carpeta que la contiene, tampoco con la escritura quitada: root seguiría un enlace que `www-data` hubiera puesto con ese nombre. Las órdenes sobre la propia carpeta que la contiene son seguras, porque Apache no puede escribir en la de encima (`cfw/`, o la de «Otra carpeta»).
   - Los contadores persisten tras los reinicios. Vaciar la carpeta, o un `rsync --delete` o un `git clean -X` del despliegue, los pone a cero. Otras aplicaciones que corran con el mismo usuario de PHP también pueden borrarlos o modificarlos, es decir, poner a cero el límite o provocar bloqueos.
   - Con varios servidores, cada uno cuenta por su lado.
   - `get_ip` usa solo `REMOTE_ADDR`. Detrás de un proxy o balanceador, todos los visitantes comparten esa IP, así que cualquiera puede bloquear el login de un email durante 15 minutos desde el último fallo.

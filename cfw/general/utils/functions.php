@@ -233,14 +233,37 @@ function intentos_carpeta()
 
 function intentos_archivo($s_clave, $b_ip = true)
 {
+	static $s_secreto = null;
+	
 	$s_dir = intentos_carpeta();
 	if($s_dir === "")
 	{
 		return "";
 	}//if
 	
+	//El nombre es un HMAC con un secreto derivado de la clave privada: no revela la IP ni el email.
+	if($s_secreto === null)
+	{
+		$s_secreto = "";
+		$clave = Cifrado::clavePrivada();
+		$a_detalles = $clave ? @openssl_pkey_get_details($clave) : false;
+		if($a_detalles && isset($a_detalles["rsa"]["d"]) && $a_detalles["rsa"]["d"] !== "")
+		{
+			$s_secreto = hash_hkdf("sha256", $a_detalles["rsa"]["d"], 32, "cfw-intentos");
+		}//if
+		else
+		{
+			error_log("CFW: sin clave privada válida no se cuentan los intentos");
+		}//else
+	}//if
+	
+	if($s_secreto === "")
+	{
+		return "";
+	}//if
+	
 	//Normaliza como Orm::filtro. Las variantes del cotejamiento (ŭ, ſ) las resuelve login con el email guardado.
-	return $s_dir."/".md5(($b_ip ? get_ip()."|" : "").strtolower(trim(strip_tags(trim((string)$s_clave)))));
+	return $s_dir."/".hash_hmac("sha256", ($b_ip ? get_ip()."|" : "").strtolower(trim(strip_tags(trim((string)$s_clave)))), $s_secreto);
 }//fun intentos_archivo
 
 

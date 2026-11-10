@@ -91,6 +91,13 @@ Cada proyecto adapta estos ficheros, que no están en `specific` y no se actuali
   - Los bloqueos en curso se levantan. La carpeta antigua ya no se usa y se puede borrar.
   - Apache necesita poder escribir en `cfw/data` para crearla, o hay que crearla a mano. Si no se puede crear o no es segura, el límite queda desactivado, con una línea `CFW:` en el log en cada intento de login o de guardado en `cuenta` con la contraseña actual.
   - Una carpeta configurada con `intentos.carpeta` dentro de `/tmp`, o de otra carpeta con escritura para todos, no se acepta.
+- Los contadores del límite de intentos cambian de nombre: en lugar del md5 de la IP y el email (o del usuario, en `cuenta`), son un HMAC-SHA256 con un secreto derivado de la clave privada del cifrado.
+  - Al actualizar se levantan los bloqueos en curso. Los contadores antiguos se ignoran, y la limpieza que se hace de vez en cuando al anotar un fallo los borra como a cualquier contador de más de 15 minutos.
+  - Bórralos a mano después de desplegar el código nuevo: con la carpeta en 0750 o 0755 se pueden listar, y su md5 se puede invertir hasta que llegue esa limpieza. Son los archivos normales de la carpeta de los contadores (`cfw/data/intentos`, o la de `intentos.carpeta`) cuyo nombre tiene 32 caracteres hexadecimales; los nuevos tienen 64. Con GNU `find`, desde la raíz del sitio y como el usuario de PHP, que es el propietario de la carpeta, y no como root; cambia la ruta si usas `intentos.carpeta` (`find` no sigue enlaces y `-type f` deja fuera todo lo que no sea un archivo normal):
+    ```
+    sudo -u www-data find cfw/data/intentos -maxdepth 1 -type f -regextype posix-extended -regex '.*/[0-9a-f]{32}' -delete
+    ```
+  - Rotar la clave privada también pone los contadores a cero. Sin una clave privada válida, el límite queda desactivado, con una línea `CFW:` en el log.
 
 ## JavaScript
 - El login usa jQuery 4.0.0 (`js/jquery-4.0.0.min.js`); los formularios con contraseña, node-forge 1.4.2 (`js/forge-1.4.2.min.js`) y `js/cifrado.js`; y el listado de `AdminHelper`, Prototype 1.7.3 (`js/prototype-1.7.3.js`) con TableKit 1.3b. Prototype 1.7.3 lleva el aviso CVE-2020-27511 (ReDoS en `stripTags` y `unescapeHTML`), sin parche: no pases datos de usuario a esas funciones.
