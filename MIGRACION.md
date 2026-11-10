@@ -12,7 +12,7 @@ Cada proyecto adapta estos ficheros, que no están en `specific` y no se actuali
   - El bloque `<IfModule mod_headers.c>` de las cabeceras de seguridad es nuevo: cópialo y activa `mod_headers` (ver «Requisitos» en [INSTALACION.md](INSTALACION.md)). Sin el módulo no da error, pero los estáticos y los errores de Apache quedan sin esas cabeceras.
   - Apache solo pone cada cabecera si la respuesta no la trae ya.
   - Responde 403 a los archivos ocultos (salvo `.well-known`), a todo `cfw/` y a los `.ini`, `.sql`, `.tpl` y `.md`.
-  - `/uploads` redirige a `/` del propio sitio, no a `http://localhost/`.
+  - Se quita la regla que redirigía `/uploads` a `http://localhost/`. Si tu sitio guarda en `uploads/` archivos que no deben descargarse, llévalos fuera de la raíz web o bloquéalos con su propia regla (por ejemplo, `RewriteRule ^uploads(/|$) - [F,NC,L]`).
   - Se quitan las reglas de `/login/register` y `/login/restorepassword`, que no tenían método.
 - `cfw/data/.htaccess`, nuevo: cópialo también.
 - `db.sql`:

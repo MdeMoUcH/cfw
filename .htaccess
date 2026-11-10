@@ -18,8 +18,6 @@ RewriteRule \.(ini|sql|tpl|md)$ - [F,NC,L]
 ErrorDocument  404  /404/
 RewriteRule ^404/$ /index.php?uno=errorpage
 
-RewriteRule ^uploads(/|$) / [R,NC,L]
-
 <Files .htaccess>
 order allow,deny
 deny from all
