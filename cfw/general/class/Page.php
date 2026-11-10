@@ -15,6 +15,8 @@ class Page extends App
 	public $vars;
 	//Motivo del último fallo de leerPassCifradas: "clave" (del servidor) o "dato" (caducado, repetido o manipulado).
 	protected $s_fallo_cifrado = "";
+	//Solo la pone revalidarSesion cuando la BD confirma que es administrador; index.php la exige en AdminHelper.
+	private $b_admin_revalidado = false;
 	
 	function __construct()
 	{
@@ -59,9 +61,11 @@ class Page extends App
 	{
 		$s_destino = $this->config["urlbase"]."admin/login";
 		
+		//Los exit cortan la petición aunque una subclase redefina redirigir o showError sin terminar.
 		if(!$this->session->isUserLogged() || ($b_admin && !$this->session->isUserAdmin()))
 		{
 			$this->redirigir($s_destino);
+			exit;
 		}//if
 		
 		$orm = new Usuarios();
@@ -74,19 +78,33 @@ class Page extends App
 			//Un fallo de la BD no debe cerrar la sesión.
 			http_response_code(503);
 			$this->showError(t("text_servicio_no_disponible"));
+			exit;
 		}//if
 		
 		if(!$a_usuario || ($b_admin && $a_usuario["fk_tipo_usuario"] != 1))
 		{
 			$this->session->setUserOut();
 			$this->redirigir($s_destino);
+			exit;
 		}//if
 		
 		if($a_usuario["fk_idioma"] !== $this->session->data["lang"])
 		{
 			$this->session->setLang($a_usuario["fk_idioma"]);
 		}//if
+		
+		if($b_admin)
+		{
+			$this->b_admin_revalidado = true;
+		}//if
 	}//fun revalidarSesion
+	
+	
+	//final: una subclase no puede fingir que ha comprobado el administrador.
+	final public function adminRevalidado()
+	{
+		return $this->b_admin_revalidado === true;
+	}//fun adminRevalidado
 	
 	
 	//Guarda la clave, no el texto: tras cambiar de idioma debe pintarse en el nuevo.

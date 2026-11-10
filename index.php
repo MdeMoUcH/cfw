@@ -39,6 +39,20 @@ function comprobar_csrf($page)
 }//fun comprobar_csrf
 
 
+//No se usan métodos de $page para responder: la subclase puede haberlos redefinido.
+function comprobar_admin($page)
+{
+	if($page instanceof AdminHelper && !$page->adminRevalidado())
+	{
+		error_log("CFW: ".get_class($page)." no ha comprobado el administrador (exigirAdmin); su constructor debe llamar a parent::__construct()");
+		http_response_code(403);
+		$error = new ErrorCFW();
+		$error->init(array(t("text_acceso_denegado")));
+		die();
+	}//if
+}//fun comprobar_admin
+
+
 //Clave y parámetros: el texto se traduce cuando ya hay sesión.
 $errores = array();
 if(PHP_SAPI === 'cli'){
@@ -108,6 +122,7 @@ if(count($errores) < 1)
 			if(metodo_despachable($class, $arg1))
 			{
 				$page = new $class();
+				comprobar_admin($page);
 				comprobar_csrf($page);
 				$page->$arg1($arg2,$arg3);
 				die();
@@ -134,6 +149,7 @@ if(count($errores) < 1)
 		else
 		{
 			$page = new $class();
+			comprobar_admin($page);
 			comprobar_csrf($page);
 			//$page->init($arg1,$arg2);
 			$page->init();

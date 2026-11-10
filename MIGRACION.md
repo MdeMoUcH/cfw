@@ -24,7 +24,10 @@ Cada proyecto adapta estos ficheros, que no están en `specific` y no se actuali
 - El login exige `activo = 1`: las cuentas con `activo = 0` dejan de poder entrar.
 - El `db.sql` anterior creaba el administrador `m@m.es` con una contraseña trivial y conocida y `activo` a 0. Bórralo o cámbiale la contraseña al migrar.
 - `cuenta`, `users`, `idiomas` y las páginas de `AdminHelper` comprueban en la BD, en cada petición, que el usuario sigue activo y, en administración, que sigue siendo administrador: si no, la sesión se cierra. Si la BD falla, responden 503.
-- Las subclases de `AdminHelper` exigen un administrador desde el constructor (`exigirAdmin`). Si una define su propio constructor, debe llamar a `parent::__construct()`; si no, no se exige.
+- Las subclases de `AdminHelper` exigen un administrador desde el constructor (`exigirAdmin`), e `index.php` no ejecuta sus métodos si no se ha comprobado:
+  - Las que no llamen a `parent::__construct()` ni a `exigirAdmin()` en su constructor pasan a responder 403 a todos. Antes quedaban abiertas.
+  - Una subclase usada así para páginas públicas debe pasar a heredar de `Page`.
+  - Un `AdminHelper` propio en `cfw/specific/class/` debe seguir llamando a `exigirAdmin()` en su constructor.
 - Los formularios POST manuales necesitan el campo `csrf`. `Form` lo añade solo, y en una plantilla está disponible como `{csrf}`. Sin token la respuesta es 403.
 - `login/logout` y `delete` de `AdminHelper` solo actúan por POST.
 - Los métodos de `App` y `Page` (y sus redefiniciones) ya no son accesibles por URL.
@@ -43,6 +46,8 @@ Cada proyecto adapta estos ficheros, que no están en `specific` y no se actuali
 - Se eliminan la función global `saveImage` y `cfw/general/utils/images.php` (`saveImageProductos`). Usa `AdminHelper::saveImage`.
 - `main` solo pinta las plantillas de `$a_plantillas_permitidas`. Una `main` propia en `cfw/specific/pages/main.php` sustituye entera a la de `general`, sin heredar nada (ver los límites de «Qué se puede redefinir en `specific`» en [README.md](README.md)), así que debe partir de la `main` nueva y declarar su propia `$a_plantillas_permitidas`, con `portada`: una copiada de la versión anterior no tiene esa lista. Ampliar la propiedad solo vale en una subclase de `main` con otro nombre.
 - `Page` tiene métodos `protected` nuevos: `redirigir`, `exigirUsuario`, `exigirAdmin`, `guardarFlash`, `leerFlash`, `prepararCifrado`, `leerPassCifradas` y `textoFalloCifrado`. Un método con el mismo nombre en una subclase los redefine, y con una firma o una visibilidad incompatibles da un error fatal.
+- `Page` tiene también el método `final public` `adminRevalidado`: una subclase que declare un método con ese nombre da un error fatal. `exigirUsuario` y `exigirAdmin` terminan la petición aunque `redirigir` o `showError`, redefinidos, no lo hagan.
+- Un `Page` propio en `cfw/specific/class/` copiado de una versión anterior no tiene `adminRevalidado`, y eso da un error fatal en todas las páginas de `AdminHelper`: parte del `Page` nuevo.
 - `login::init()` ya no recibe un mensaje (antes `init($s_mensaje = "")`). Para llegar al login con un aviso, guarda con `guardarFlash` la clave de `textos.ini` del aviso, no el texto, y usa `redirigir`, como hace `cuenta`.
 - `Orm` solo acepta ids formados por dígitos en `getById`, `getActivoById`, `delete`, `update`, `updateField` y los demás métodos que reciben un id: con otro valor devuelven `false` y añaden un error a `errores`. `update` y `updateField` no escriben la clave primaria, y `updateField` solo admite columnas de `$campos`.
 - En `AdminHelper::form`, una subida fallida deshace el alta con un `DELETE` físico (`Orm::eliminarFila`), y `guardarSubidas` devuelve `bool`.
