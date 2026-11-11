@@ -94,6 +94,7 @@ class AdminHelper extends Page implements PaginaAdmin{
 			$tpl_aux = new Template("listado_pro");
 			$tpl_aux->vars["confirmar_borrado_json"] = json_js(t("text_confirmar_borrado"));
 			$tpl_aux->vars["editfield_url_json"] = json_js($this->config["urlbase"]."admin/".$this->slug."/editfield");
+			$tpl_aux->vars["error_edicion_json"] = json_js(t("text_hubo_error"));
 			$tpl_aux->vars["elementos"] = $tpl->vars["content"];
 			$tpl->vars["content"] = $tpl_aux->get();
 			
@@ -340,6 +341,8 @@ class AdminHelper extends Page implements PaginaAdmin{
 			http_response_code(405);
 			header("Allow: POST");
 			$this->showError(t("text_borrado_solo_post"));
+			//El exit corta la petición aunque una subclase redefina showError sin terminar.
+			exit;
 		}
 		
 		//$this->vars["menu"] = $this->get_menu($this->slug);
@@ -362,18 +365,81 @@ class AdminHelper extends Page implements PaginaAdmin{
 	
 	
 	function editfield(){
-		$orm = new $this->class();
+		//Como en delete: un PUT o DELETE no pasa por comprobar_csrf.
+		if(@$_SERVER["REQUEST_METHOD"] !== "POST"){
+			http_response_code(405);
+			header("Allow: POST");
+			$this->showError(t("text_editfield_solo_post"));
+			exit;
+		}
+		
+		//Los exit cortan la petición aunque una subclase redefina rechazarEdicion sin terminar.
+		$s_campo = @$_POST["field"];
 		$valor = @$_POST["value"];
-		$s_salida = $valor;
+		$id = @$_POST["id"];
 		//La contraseña solo se cambia desde un formulario que la envíe cifrada (Page::leerPassCifradas); TableKit no puede.
-		if(@$_POST["field"] === "pass"){
-			die(t("text_hubo_error"));
+		if(!is_string($s_campo) || $s_campo === "pass"){
+			$this->rechazarEdicion(t("text_campo_no_valido"));
+			exit;
 		}
-		if($orm->updateField(@$_POST["id"],@$_POST["field"],$valor)){
-			die(escapar($s_salida));
-		}else{
-			die(t("text_hubo_error"));
+		if(!is_string($valor)){
+			$this->rechazarEdicion(t("text_valor_no_valido"));
+			exit;
 		}
+		if(!is_string($id) || !ctype_digit($id)){
+			$this->rechazarEdicion(t("text_id_no_valido"));
+			exit;
+		}
+		
+		$orm = new $this->class();
+		if(!in_array($s_campo,$this->camposEditables($orm),true)){
+			$orm->cerrar();
+			$this->rechazarEdicion(t("text_campo_no_valido"));
+			exit;
+		}
+		//Lo que niapa_checkboxes deja en el formulario.
+		if(in_array($s_campo,(array)$orm->checkbox_singles,true) && $valor !== "0" && $valor !== "1"){
+			$orm->cerrar();
+			$this->rechazarEdicion(t("text_valor_no_valido"));
+			exit;
+		}
+		
+		//Solo esa columna y por update, como edit: la fila entera volvería a filtrar los valores guardados.
+		$b_ok = $orm->update(array($s_campo => $valor),$id);
+		$a_errores = (array)$orm->errores;
+		$orm->cerrar();
+		if($b_ok){
+			header("Content-Type: text/plain; charset=UTF-8");
+			die(escapar($valor));
+		}
+		$this->rechazarEdicion(count($a_errores) >= 1 ? reset($a_errores) : t("text_hubo_error"));
+		exit;
+	}
+	
+	
+	//Columnas que puede escribir editfield: las del formulario, sin las que este no edita como texto u opción.
+	protected function camposEditables($orm){
+		$a_excluidos = array("hidden","img","file","password","password_cifrado","cabecera","checkbox","checkbox_dinamico","select_desactivado","select_dinamico_desactivado");
+		$a_editables = array();
+		foreach((array)$orm->campos_form as $a_campo){
+			if(!is_array($a_campo) || !isset($a_campo["name"]) || !is_string($a_campo["name"])){
+				continue;
+			}
+			$s_nombre = $a_campo["name"];
+			$s_tipo = (isset($a_campo["type"]) && is_string($a_campo["type"])) ? $a_campo["type"] : "";
+			if(isset($orm->campos[$s_nombre]) && $s_nombre !== "id" && $s_nombre !== $orm->primarykey && $s_nombre !== "pass" && !in_array($s_tipo,$a_excluidos,true)){
+				$a_editables[] = $s_nombre;
+			}
+		}
+		return $a_editables;
+	}
+	
+	
+	//Responde 400 con el motivo escapado. Protegido para que lo use un editfield redefinido.
+	protected function rechazarEdicion($s_texto){
+		http_response_code(400);
+		header("Content-Type: text/plain; charset=UTF-8");
+		die(escapar($s_texto));
 	}
 	
 	
