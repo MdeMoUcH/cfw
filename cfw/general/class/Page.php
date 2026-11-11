@@ -44,13 +44,14 @@ class Page extends App
 	}//fun redirigir
 	
 	
-	protected function exigirUsuario()
+	//exigirUsuario y exigirAdmin son final: una subclase no puede saltarse la revalidación.
+	final protected function exigirUsuario()
 	{
 		$this->revalidarSesion(false);
 	}//fun exigirUsuario
 	
 	
-	protected function exigirAdmin()
+	final protected function exigirAdmin()
 	{
 		$this->revalidarSesion(true);
 	}//fun exigirAdmin

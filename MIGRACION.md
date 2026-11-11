@@ -29,6 +29,7 @@ Cada proyecto adapta estos ficheros, que no están en `specific` y no se actuali
   - Una subclase usada así para páginas públicas debe pasar a heredar de `Page`.
   - Un `AdminHelper` propio en `cfw/specific/class/` debe seguir llamando a `exigirAdmin()` en su constructor.
 - Los formularios POST manuales necesitan el campo `csrf`. `Form` lo añade solo, y en una plantilla está disponible como `{csrf}`. Sin token la respuesta es 403.
+- El 403 por token CSRF no válido lo pinta siempre `ErrorCFW`, no el `showError` de la página; una página con `showError` redefinido sin terminar ya no ejecuta el método.
 - `login/logout` y `delete` de `AdminHelper` solo actúan por POST.
 - Los métodos de `App` y `Page` (y sus redefiniciones) ya no son accesibles por URL.
 - `get_ip` usa solo `REMOTE_ADDR` y deja de usar `X-Forwarded-For`.
@@ -45,8 +46,8 @@ Cada proyecto adapta estos ficheros, que no están en `specific` y no se actuali
 - PHP 8.2 da `Deprecated` con las propiedades dinámicas: las subclases de `cfw/specific/` deben declarar las suyas, con una visibilidad compatible con la del padre. `private` da un fatal, y `protected` también si el padre la declara `public`, como `$tabla` en `Orm` o `$vars` en `Page`.
 - Se eliminan la función global `saveImage` y `cfw/general/utils/images.php` (`saveImageProductos`). Usa `AdminHelper::saveImage`.
 - `main` solo pinta las plantillas de `$a_plantillas_permitidas`. Una `main` propia en `cfw/specific/pages/main.php` sustituye entera a la de `general`, sin heredar nada (ver los límites de «Qué se puede redefinir en `specific`» en [README.md](README.md)), así que debe partir de la `main` nueva y declarar su propia `$a_plantillas_permitidas`, con `portada`: una copiada de la versión anterior no tiene esa lista. Ampliar la propiedad solo vale en una subclase de `main` con otro nombre.
-- `Page` tiene métodos `protected` nuevos: `redirigir`, `exigirUsuario`, `exigirAdmin`, `guardarFlash`, `leerFlash`, `prepararCifrado`, `leerPassCifradas` y `textoFalloCifrado`. Un método con el mismo nombre en una subclase los redefine, y con una firma o una visibilidad incompatibles da un error fatal.
-- `Page` tiene también el método `final public` `adminRevalidado`: una subclase que declare un método con ese nombre da un error fatal. `exigirUsuario` y `exigirAdmin` terminan la petición aunque `redirigir` o `showError`, redefinidos, no lo hagan.
+- `Page` tiene métodos `protected` nuevos: `redirigir`, `guardarFlash`, `leerFlash`, `prepararCifrado`, `leerPassCifradas` y `textoFalloCifrado`. Un método con el mismo nombre en una subclase los redefine, y con una firma o una visibilidad incompatibles da un error fatal.
+- `Page` tiene también los métodos `final` `adminRevalidado` (público), `exigirUsuario` y `exigirAdmin` (protegidos): una subclase que declare un método con alguno de esos nombres da un error fatal (500 en esa página). `exigirUsuario` y `exigirAdmin` terminan la petición aunque `redirigir` o `showError`, redefinidos, no lo hagan.
 - Un `Page` propio en `cfw/specific/class/` copiado de una versión anterior no tiene `adminRevalidado`, y eso da un error fatal en todas las páginas de `AdminHelper`: parte del `Page` nuevo.
 - `login::init()` ya no recibe un mensaje (antes `init($s_mensaje = "")`). Para llegar al login con un aviso, guarda con `guardarFlash` la clave de `textos.ini` del aviso, no el texto, y usa `redirigir`, como hace `cuenta`.
 - `Orm` solo acepta ids formados por dígitos en `getById`, `getActivoById`, `delete`, `update`, `updateField` y los demás métodos que reciben un id: con otro valor devuelven `false` y añaden un error a `errores`. `update` y `updateField` no escriben la clave primaria, y `updateField` solo admite columnas de `$campos`.

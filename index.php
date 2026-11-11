@@ -29,17 +29,25 @@ else
 }//else
 
 
-function comprobar_csrf($page)
+//comprobar_csrf y comprobar_admin no usan métodos de $page para responder: la subclase puede haberlos redefinido.
+function comprobar_csrf()
 {
-	if(@$_SERVER["REQUEST_METHOD"] === "POST" && !$page->session->comprobarCsrf(@$_POST["csrf"]))
+	if(@$_SERVER["REQUEST_METHOD"] === "POST")
 	{
-		http_response_code(403);
-		$page->showError(t("text_peticion_no_valida"));
+		//Se compara con $_SESSION, como Template y Form: $page->session es pública y una subclase puede sustituirla.
+		$s_sesion = isset($_SESSION["csrf"]) ? $_SESSION["csrf"] : null;
+		$s_token = isset($_POST["csrf"]) ? $_POST["csrf"] : null;
+		if(!(is_string($s_sesion) && $s_sesion !== "" && is_string($s_token) && hash_equals($s_sesion, $s_token)))
+		{
+			http_response_code(403);
+			$error = new ErrorCFW();
+			$error->init(array(t("text_peticion_no_valida")));
+			die();
+		}//if
 	}//if
 }//fun comprobar_csrf
 
 
-//No se usan métodos de $page para responder: la subclase puede haberlos redefinido.
 function comprobar_admin($page)
 {
 	if($page instanceof AdminHelper && !$page->adminRevalidado())
@@ -123,7 +131,7 @@ if(count($errores) < 1)
 			{
 				$page = new $class();
 				comprobar_admin($page);
-				comprobar_csrf($page);
+				comprobar_csrf();
 				$page->$arg1($arg2,$arg3);
 				die();
 			}//if
@@ -150,7 +158,7 @@ if(count($errores) < 1)
 		{
 			$page = new $class();
 			comprobar_admin($page);
-			comprobar_csrf($page);
+			comprobar_csrf();
 			//$page->init($arg1,$arg2);
 			$page->init();
 			die();
