@@ -8,7 +8,7 @@
  ***************/
 
 
-class idiomas extends Page{
+class idiomas extends Page implements PaginaAdmin{
 	
 	function __construct(){
 		parent::__construct();

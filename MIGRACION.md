@@ -28,6 +28,10 @@ Cada proyecto adapta estos ficheros, que no están en `specific` y no se actuali
   - Las que no llamen a `parent::__construct()` ni a `exigirAdmin()` en su constructor pasan a responder 403 a todos. Antes quedaban abiertas.
   - Una subclase usada así para páginas públicas debe pasar a heredar de `Page`.
   - Un `AdminHelper` propio en `cfw/specific/class/` debe seguir llamando a `exigirAdmin()` en su constructor.
+- `users` e `idiomas` exigen también el administrador desde el constructor, e `index.php` lo comprueba como en `AdminHelper` (implementan la interfaz nueva `PaginaAdmin`):
+  - Una subclase de `users` o `idiomas` con otro nombre cuyo constructor no llame a `parent::__construct()` pasa a responder 403 a todos.
+  - Una copia propia de `users` o `idiomas` en `cfw/specific/pages/` no implementa `PaginaAdmin` y no recibe la comprobación: parte de la nueva.
+  - Un POST anónimo sin `csrf` a `users` recibe ahora un 302 al login en lugar de un 403, porque la revalidación del administrador va en el constructor, como en `AdminHelper` e `idiomas`.
 - Los formularios POST manuales necesitan el campo `csrf`. `Form` lo añade solo, y en una plantilla está disponible como `{csrf}`. Sin token la respuesta es 403.
 - El 403 por token CSRF no válido lo pinta siempre `ErrorCFW`, no el `showError` de la página; una página con `showError` redefinido sin terminar ya no ejecuta el método.
 - `login/logout` y `delete` de `AdminHelper` solo actúan por POST.
@@ -48,10 +52,12 @@ Cada proyecto adapta estos ficheros, que no están en `specific` y no se actuali
 - `main` solo pinta las plantillas de `$a_plantillas_permitidas`. Una `main` propia en `cfw/specific/pages/main.php` sustituye entera a la de `general`, sin heredar nada (ver los límites de «Qué se puede redefinir en `specific`» en [README.md](README.md)), así que debe partir de la `main` nueva y declarar su propia `$a_plantillas_permitidas`, con `portada`: una copiada de la versión anterior no tiene esa lista. Ampliar la propiedad solo vale en una subclase de `main` con otro nombre.
 - `Page` tiene métodos `protected` nuevos: `redirigir`, `guardarFlash`, `leerFlash`, `prepararCifrado`, `leerPassCifradas` y `textoFalloCifrado`. Un método con el mismo nombre en una subclase los redefine, y con una firma o una visibilidad incompatibles da un error fatal.
 - `Page` tiene también los métodos `final` `adminRevalidado` (público), `exigirUsuario` y `exigirAdmin` (protegidos): una subclase que declare un método con alguno de esos nombres da un error fatal (500 en esa página). `exigirUsuario` y `exigirAdmin` terminan la petición aunque `redirigir` o `showError`, redefinidos, no lo hagan.
-- Un `Page` propio en `cfw/specific/class/` copiado de una versión anterior no tiene `adminRevalidado`, y eso da un error fatal en todas las páginas de `AdminHelper`: parte del `Page` nuevo.
+- Un `Page` propio en `cfw/specific/class/` copiado de una versión anterior no tiene `adminRevalidado`, y eso da un error fatal en todas las páginas de `AdminHelper` y de `PaginaAdmin`: parte del `Page` nuevo.
 - `login::init()` ya no recibe un mensaje (antes `init($s_mensaje = "")`). Para llegar al login con un aviso, guarda con `guardarFlash` la clave de `textos.ini` del aviso, no el texto, y usa `redirigir`, como hace `cuenta`.
 - `Orm` solo acepta ids formados por dígitos en `getById`, `getActivoById`, `delete`, `update`, `updateField` y los demás métodos que reciben un id: con otro valor devuelven `false` y añaden un error a `errores`. `update` y `updateField` no escriben la clave primaria, y `updateField` solo admite columnas de `$campos`.
 - En `AdminHelper::form`, una subida fallida deshace el alta con un `DELETE` físico (`Orm::eliminarFila`), y `guardarSubidas` devuelve `bool`.
+- `PaginaAdmin` es una interfaz nueva: una clase propia con ese nombre da un error fatal.
+- La etiqueta del listado de `AdminHelper` es `nombre`, si está vacío `name` y si no `email`, para cualquier slug. Antes, con el slug `users`, era siempre el `email`: un `AdminHelper` con ese slug y filas con `nombre` o `name` deja de mostrarlo.
 - `pass_valida` y `pass_hash` son funciones globales nuevas: no pueden repetirse en `cfw/specific/utils/functions.php`.
 - `t()` es global: una función `t` en `cfw/specific/utils/functions.php` da un fatal.
 - `intentos_carpeta`, `intentos_archivo`, `intentos_abrir`, `intentos_bloqueado`, `intentos_fallo` e `intentos_limpiar` son funciones globales nuevas: no pueden repetirse en `cfw/specific/utils/functions.php`, porque PHP da un error fatal.
@@ -110,4 +116,4 @@ Cada proyecto adapta estos ficheros, que no están en `specific` y no se actuali
 - Se retira jHtmlArea: desaparecen `$jhtmlarea` de `AdminHelper` y la plantilla `elements_html`.
 - `main.js` solo conserva `sendLoginForm` y `devolver_mensaje`. Se eliminan `sendRegisterForm`, `comprobar_mail`, `sendAForm`, `muestraError`, `salir`, `sendFormUser` y los textos que usaban.
 - `main.js` y `cifrado.js` pintan sus mensajes con las clases `mensaje mensaje_Red`, y se cargan como `main.js?v=3` y `cifrado.js?v=2`. Si el sitio tiene sus propias copias, actualízalas.
-- Si activas la edición en línea de TableKit, configura `TableKit.options.editAjaxURI` y añade el `csrf` al POST: hoy no lo envía y la respuesta sería 403.
+- La edición en línea de TableKit del listado de `AdminHelper` sigue desactivada en el núcleo. Si la activas (tabla con clase `editable` y cabeceras sin `noedit` cuyo `id` es la columna), `listado_pro.tpl` añade el `csrf` al POST y, si `TableKit.options.editAjaxURI` sigue en su valor por defecto (`/`), lo dirige a `admin/<slug>/editfield`; un `editAjaxURI` ya configurado se conserva. Un `listado_pro.tpl` propio en `cfw/specific/templates/` debe copiar el segundo `<script>` del nuevo: sin él, la respuesta es 403.

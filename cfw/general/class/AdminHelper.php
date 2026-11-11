@@ -8,7 +8,7 @@
  * 
  ***************/
  
-class AdminHelper extends Page{
+class AdminHelper extends Page implements PaginaAdmin{
 	
 	public $last_file_name = "";
 	protected $slug = "admin";
@@ -67,13 +67,17 @@ class AdminHelper extends Page{
 			$tpl->vars["content"] = "";
 			$i=0;
 			foreach($elements as $element){
-				if($this->slug == "users"){
-					$element["nombre"] = $element["email"];
-				}
 				$tplelement = new Template("element_listado_pro");
 				$tplelement->vars["urlbase"] = $this->config["urlbase"];
 				$tplelement->vars["slug"] = $this->slug;
-				$s_etiqueta = (@$element["nombre"] != "") ? $element["nombre"] : (string)@$element["name"];
+				//Sin nombre ni name (como en Usuarios), el email.
+				if(@$element["nombre"] != ""){
+					$s_etiqueta = $element["nombre"];
+				}elseif(@$element["name"] != ""){
+					$s_etiqueta = $element["name"];
+				}else{
+					$s_etiqueta = (string)@$element["email"];
+				}
 				$tplelement->vars["titulo"] = escapar($s_etiqueta);
 				$tplelement->vars["nombre"] = escapar($s_etiqueta);
 				$tplelement->vars["id"] = $element["id"];
@@ -89,6 +93,7 @@ class AdminHelper extends Page{
 			
 			$tpl_aux = new Template("listado_pro");
 			$tpl_aux->vars["confirmar_borrado_json"] = json_js(t("text_confirmar_borrado"));
+			$tpl_aux->vars["editfield_url_json"] = json_js($this->config["urlbase"]."admin/".$this->slug."/editfield");
 			$tpl_aux->vars["elementos"] = $tpl->vars["content"];
 			$tpl->vars["content"] = $tpl_aux->get();
 			

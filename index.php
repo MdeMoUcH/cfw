@@ -50,11 +50,20 @@ function comprobar_csrf()
 
 function comprobar_admin($page)
 {
-	if($page instanceof AdminHelper && !$page->adminRevalidado())
+	//AdminHelper también por separado: uno propio en specific/class copiado de antes no implementa PaginaAdmin.
+	if(($page instanceof AdminHelper || $page instanceof PaginaAdmin) && !$page->adminRevalidado())
 	{
-		error_log("CFW: ".get_class($page)." no ha comprobado el administrador (exigirAdmin); su constructor debe llamar a parent::__construct()");
-		http_response_code(403);
+		//Arranca la sesión aunque la subclase no haya llamado a ningún constructor.
 		$error = new ErrorCFW();
+		//desarrollo de AppConf, no de $page->config, que la subclase puede cambiar.
+		$conf = new AppConf();
+		$b_admin = !empty($_SESSION["logueado"]) && !empty($_SESSION["admin"]);
+		//En producción, ni anónimos ni usuarios normales pueden hacer crecer el log pidiendo la página en bucle.
+		if($conf->config["desarrollo"] || $b_admin)
+		{
+			error_log("CFW: ".get_class($page)." no ha comprobado el administrador (exigirAdmin); su constructor debe llamar a parent::__construct() o a exigirAdmin()");
+		}//if
+		http_response_code(403);
 		$error->init(array(t("text_acceso_denegado")));
 		die();
 	}//if

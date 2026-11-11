@@ -77,7 +77,9 @@ class Msession extends AppConf
     
     function comprobarCsrf($s_token)
     {
-        return is_string($s_token) && hash_equals($this->data["csrf"], $s_token);
+        //Como comprobar_csrf de index.php: un token de sesión vacío o que no sea cadena nunca vale.
+        $s_sesion = isset($this->data["csrf"]) ? $this->data["csrf"] : null;
+        return is_string($s_sesion) && $s_sesion !== "" && is_string($s_token) && hash_equals($s_sesion, $s_token);
     }//fun
     
 

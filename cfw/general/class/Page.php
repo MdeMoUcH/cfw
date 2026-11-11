@@ -15,7 +15,7 @@ class Page extends App
 	public $vars;
 	//Motivo del último fallo de leerPassCifradas: "clave" (del servidor) o "dato" (caducado, repetido o manipulado).
 	protected $s_fallo_cifrado = "";
-	//Solo la pone revalidarSesion cuando la BD confirma que es administrador; index.php la exige en AdminHelper.
+	//Solo la pone revalidarSesion cuando la BD confirma que es administrador; index.php la exige en AdminHelper y PaginaAdmin.
 	private $b_admin_revalidado = false;
 	
 	function __construct()

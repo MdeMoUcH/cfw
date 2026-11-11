@@ -8,7 +8,7 @@
  ***************/
 
 
-class users extends Page{
+class users extends Page implements PaginaAdmin{
 	
 	protected $class = "Usuarios";
 	protected $titulo = "";
@@ -19,13 +19,13 @@ class users extends Page{
 	
 	function __construct(){
 		parent::__construct();
+		$this->exigirAdmin();
 		$this->titulo = t("text_usuarios");
 		$this->titulo_form = t("text_titulo_form_usuarios");
 	}
 	
 	
 	function init(){
-		$this->exigirAdmin();
 		$this->vars["menu"] = $this->get_menu($this->slug);
 		
 		$tpl = new Template($this->template);
@@ -56,7 +56,6 @@ class users extends Page{
 	
 	
 	function id($id = ""){
-		$this->exigirAdmin();
 		$this->vars["menu"] = $this->get_menu($this->slug);
 		
 		$tpl = new Template($this->template);
@@ -85,8 +84,6 @@ class users extends Page{
 	
 		
 	function form($save = "", $id = "",$s_msg = ""){
-		$this->exigirAdmin();
-		
 		$b_insert_error = false;
 		
 		$orm = new $this->class();
@@ -202,7 +199,6 @@ class users extends Page{
 	
 	
 	function edit($id, $save = ""){
-		$this->exigirAdmin();
 		$s_msg = "";
 		if($save != "" && @$_SERVER["REQUEST_METHOD"] === "POST"){
 			$orm = new $this->class();

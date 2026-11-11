@@ -26,7 +26,7 @@ if(file_exists($s_path.'specific/utils/mpdf/mpdf.php')){
 }//if*/
 
 $a_clases = array('AppConf','App','Msession','Cifrado','GestorIdiomas','Bbdd','Template','Page',
-				'Error','Orm','Form','AdminHelper');
+				'PaginaAdmin','Error','Orm','Form','AdminHelper');
 
 $a_orms = array('Usuarios','DinamicOrm');
 //die(getcwd());

@@ -27,4 +27,25 @@ function borrar(s_url){
 	}
 }
 </script>
+<script type="text/javascript">
+//Edición en línea de TableKit (tablas con clase editable): tablekit.js no envía el csrf y se añade al formulario de la celda.
+if(window.TableKit && TableKit.Editable && TableKit.Editable.CellEditor){
+	//Solo si nadie lo ha configurado: '/' es el valor por defecto de TableKit.
+	if(TableKit.options.editAjaxURI === '/'){
+		TableKit.options.editAjaxURI = {editfield_url_json};
+	}
+	var cfw_tablekit_submit = TableKit.Editable.CellEditor.prototype.submit;
+	TableKit.Editable.CellEditor.prototype.submit = function(cell, form){
+		form = form ? form : cell.down('form');
+		if(form && !$(form).down('input[name="csrf"]')){
+			var input = document.createElement("input");
+			input.type = "hidden";
+			input.name = "csrf";
+			input.value = "{csrf}";
+			form.appendChild(input);
+		}
+		return cfw_tablekit_submit.call(this, cell, form);
+	};
+}
+</script>
 </div>
