@@ -14,9 +14,16 @@ Debajo hay un apartado por versión, con la más reciente arriba, que dice qué 
 
 ### Archivos que revisar a mano
 Cada proyecto adapta estos ficheros, que no están en `specific` y no se actualizan solos:
-- `cfw/config.ini`:
-  - `langs` de `config.ini` queda sin uso.
-  - Opción nueva y opcional `intentos.carpeta`, para guardar los contadores del límite de intentos en otra carpeta (ver «Límite de intentos» en «Despliegue» de [INSTALACION.md](INSTALACION.md)).
+- `cfw/config.ini`: el sitio deja de adaptarlo. La configuración pasa a tres capas, que se fusionan clave a clave: `cfw/config.ini` (los valores por defecto de CFW), `cfw/specific/config.ini` (lo del sitio) y `cfw/data/config.ini` (lo de cada servidor). Ver el paso 3 de «Puesta en marcha» en [INSTALACION.md](INSTALACION.md). Reparte el `config.ini` actual entre los dos ficheros nuevos:
+  - En cada servidor, **antes de desplegar**, crea `cfw/data/config.ini` con las claves de servidor del `config.ini` actual: `db.*`, `urlbase`, `pathbase`, `desarrollo`, `analytics` y, si las usas, `cifrado.clave_privada` y las rutas de subida de `AdminHelper`. Si el servidor despliega con git y tiene `cfw/config.ini` modificado, descarta ese cambio después de copiarlo. El fichero no se versiona, y `rsync --delete` y `git clean -X` lo borran (ver «Despliegue»). Que sea del usuario que despliega, y pon la carpeta con el bit sticky, `chmod 1770 cfw/data`, para que Apache no pueda borrarlo ni sustituirlo (ver «Carpeta `cfw/data` y permisos» en [INSTALACION.md](INSTALACION.md)).
+  - Crea y versiona `cfw/specific/config.ini` con lo propio del sitio: `name`, `description`, `keywords`, `lang_default`, `class.default`, `email` y las claves propias.
+  - Recupera el de CFW durante el merge, con `git checkout 2.0.0 -- cfw/config.ini`.
+  - `langs` desaparece. `pathbase` sobra si es la raíz del sitio, que es su valor por defecto. La opción nueva y opcional `intentos.carpeta`, para guardar los contadores del límite de intentos en otra carpeta, va en `cfw/data/config.ini` (ver «Límite de intentos» en «Despliegue» de [INSTALACION.md](INSTALACION.md)).
+  - `urlbase` y `pathbase` reciben la barra final si les falta. Un sitio que ponía `urlbase` sin barra y añadía `/` en sus plantillas obtendrá `//`.
+  - Si `cfw/config.ini` tuvo contraseñas reales en el repositorio, cámbialas: siguen en su historia.
+  - Los valores con comillas o barras invertidas van entre comillas dobles, y hay que comprobar que el fichero se ha leído bien: ver «Valores con comillas o barras invertidas» y «Comprueba que se ha leído bien» en el paso 3 de «Puesta en marcha».
+  - Un fichero mal formado se ignora entero, con una línea `CFW:` en el log.
+  - Un `AppConf` propio en `cfw/specific/class/` no lee las capas: quítalo o llévale los cambios.
 - El `.htaccess` raíz.
   - El bloque `<IfModule mod_headers.c>` de las cabeceras de seguridad es nuevo: cópialo y activa `mod_headers` (ver «Requisitos» en [INSTALACION.md](INSTALACION.md)). Sin el módulo no da error, pero los estáticos y los errores de Apache quedan sin esas cabeceras.
   - Apache solo pone cada cabecera si la respuesta no la trae ya.

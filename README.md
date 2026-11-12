@@ -25,7 +25,7 @@ Una petición se traduce en clase, método y hasta dos argumentos:
 /admin/clase/metodo/arg1/arg2  ->  index.php?uno=clase&dos=metodo&tres=arg1&cuatro=arg2
 ```
 
-1. `index.php` busca `cfw/specific/pages/<clase>.php` y, si no existe, `cfw/general/pages/<clase>.php`. Si no se indica clase, usa `class.default` de `config.ini`.
+1. `index.php` busca `cfw/specific/pages/<clase>.php` y, si no existe, `cfw/general/pages/<clase>.php`. Si no se indica clase, usa `class.default` de la configuración.
 2. El fichero debe definir una clase con el mismo nombre, en minúsculas, números y `_`, que herede de `Page`.
 3. Sin método se ejecuta `init()`. Con método, se ejecuta `$page->metodo($arg1, $arg2)`.
 4. Si algo falla, responde 404 con `ErrorCFW`. Los detalles solo se muestran con `desarrollo = true`.
@@ -44,6 +44,7 @@ El `.htaccess` raíz solo define las rutas `/admin/...` y `/login`, además de `
 | `templates/` | Sustituye a la plantilla con la misma ruta. |
 | `lang/<código>/` | Se fusiona clave a clave con los textos de `general`, con prioridad sobre ellos dentro del mismo idioma. |
 | `utils/functions.php` | Se carga además del de `general`. |
+| `config.ini` | Se fusiona clave a clave con `cfw/config.ini`, con prioridad sobre él. Encima de ambos va `cfw/data/config.ini`, el del servidor. |
 
 Límites:
 - La sustitución es del fichero entero. Una clase no puede heredar de la de `general` con su mismo nombre, así que hay que copiarla o crear otra con nombre distinto.
@@ -51,7 +52,9 @@ Límites:
 - Una función de `specific/utils/functions.php` no puede llamarse igual que una de `general`: PHP da un error fatal.
 
 ## Qué queda fuera de `specific`
-Cada proyecto también adapta estos ficheros, que no están en `specific`: `cfw/config.ini`, el `.htaccess` raíz, `db.sql`, `css/`, `js/` e `img/`. Al actualizar CFW en un proyecto hay que revisarlos a mano (ver [MIGRACION.md](MIGRACION.md)). `cfw/data/` guarda lo que escribe la aplicación. Su contenido no se versiona, salvo su `.htaccess`.
+Cada proyecto también adapta estos ficheros, que no están en `specific`: el `.htaccess` raíz, `db.sql`, `css/`, `js/` e `img/`. Al actualizar CFW en un proyecto hay que revisarlos a mano (ver [MIGRACION.md](MIGRACION.md)). `cfw/data/` guarda lo que escribe la aplicación y `cfw/data/config.ini`, que escribe la persona. Su contenido no se versiona, salvo su `.htaccess`.
+
+La configuración va en tres capas, y cada una pisa a la anterior clave a clave: `cfw/config.ini` trae los valores por defecto de CFW y el sitio no lo toca; `cfw/specific/config.ini` es lo propio del sitio que no es secreto y se versiona con él; y `cfw/data/config.ini` es lo de cada servidor (base de datos, `urlbase`, `desarrollo`...) y no se versiona. Ver «Puesta en marcha» en [INSTALACION.md](INSTALACION.md).
 
 ## Idiomas
 Los textos están en `cfw/general/lang/<código>/` (`textos.ini` y un `.ini` por plantilla). Los de `cfw/specific/lang/<código>/` tienen prioridad, clave a clave.
