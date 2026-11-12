@@ -1,9 +1,18 @@
-# Migrar un sitio basado en CFW a esta versión
-Lo que hay que revisar al actualizar CFW en un proyecto ya construido con él. Para saber cómo funciona CFW, ver [README.md](README.md); para requisitos, permisos y despliegue, [INSTALACION.md](INSTALACION.md).
+# Migrar un sitio basado en CFW
+Lo que hay que revisar al actualizar CFW en un proyecto ya construido con él, versión a versión. Para saber cómo funciona CFW, ver [README.md](README.md); para requisitos, permisos y despliegue, [INSTALACION.md](INSTALACION.md); para los pasos con git, «Actualizar un sitio» en [INSTALACION.md](INSTALACION.md).
 
-Esta versión exige PHP 8.2, la extensión `openssl` (sin ella no hay login) y Apache 2.4.10 con `mod_headers`, y se recomienda la extensión `posix`. Apache necesita escritura en `cfw/data` para generar la clave privada del cifrado: si no la tiene, el login muestra un aviso en lugar del formulario. Ver «Requisitos» y «Clave privada del cifrado» en [INSTALACION.md](INSTALACION.md).
+## Numeración
+La versión de CFW está en `cfw/general/VERSION`, con tres números (por ejemplo, `2.0.0`), y la etiqueta de git de cada versión se llama igual. Los sitios hechos con versiones anteriores no tienen ese archivo: son «1.x».
+- El primer número cambia si un sitio tiene que tocar algo para actualizar.
+- El segundo, si hay funciones nuevas sin romper nada.
+- El tercero, en las correcciones.
 
-## Archivos que revisar a mano
+Debajo hay un apartado por versión, con la más reciente arriba, que dice qué revisar al llegar a ella desde la anterior. Al actualizar, aplica los apartados de todas las versiones posteriores a la del sitio, hasta la nueva incluida, empezando por la más antigua (ver «Actualizar un sitio» en [INSTALACION.md](INSTALACION.md)).
+
+## 2.0.0 (desde 1.x)
+2.0.0 exige PHP 8.2, la extensión `openssl` (sin ella no hay login) y Apache 2.4.10 con `mod_headers`, y se recomienda la extensión `posix`. Apache necesita escritura en `cfw/data` para generar la clave privada del cifrado: si no la tiene, el login muestra un aviso en lugar del formulario. Ver «Requisitos» y «Clave privada del cifrado» en [INSTALACION.md](INSTALACION.md).
+
+### Archivos que revisar a mano
 Cada proyecto adapta estos ficheros, que no están en `specific` y no se actualizan solos:
 - `cfw/config.ini`:
   - `langs` de `config.ini` queda sin uso.
@@ -20,7 +29,7 @@ Cada proyecto adapta estos ficheros, que no están en `specific` y no se actuali
 - `css/`, `js/` e `img/`.
 - Las copias propias de páginas, clases, plantillas y textos en `cfw/specific/`.
 
-## Peticiones y acceso
+### Peticiones y acceso
 - El login exige `activo = 1`: las cuentas con `activo = 0` dejan de poder entrar.
 - El `db.sql` anterior creaba el administrador `m@m.es` con una contraseña trivial y conocida y `activo` a 0. Bórralo o cámbiale la contraseña al migrar.
 - `cuenta`, `users`, `idiomas` y las páginas de `AdminHelper` comprueban en la BD, en cada petición, que el usuario sigue activo y, en administración, que sigue siendo administrador: si no, la sesión se cierra. Si la BD falla, responden 503.
@@ -43,7 +52,7 @@ Cada proyecto adapta estos ficheros, que no están en `specific` y no se actuali
   - Una CSP propia enviada desde PHP sustituye a la del framework y tiene que incluir `frame-ancestors`.
   - Con `nosniff`, los scripts y estilos servidos con un `Content-Type` incorrecto dejan de cargarse.
 
-## Páginas, clases y funciones
+### Páginas, clases y funciones
 - `saveImage`, `saveFile`, `guardarCategorias` y `load_template` pasan a `protected`.
 - `saveFile` solo acepta `tpl` y `css`, salvo que se redefina `$extensiones_permitidas`. Los nombres subidos se normalizan y `saveImage` pone siempre la extensión del tipo real.
 - Se eliminan `comprobarInvitado`, `getLastUserByFkIdUsuario` y `getUsersByFkIdUsuario` de `Usuarios`.
@@ -67,13 +76,13 @@ Cada proyecto adapta estos ficheros, que no están en `specific` y no se actuali
 - `t()` es global: una función `t` en `cfw/specific/utils/functions.php` da un fatal.
 - `intentos_carpeta`, `intentos_archivo`, `intentos_abrir`, `intentos_bloqueado`, `intentos_fallo` e `intentos_limpiar` son funciones globales nuevas: no pueden repetirse en `cfw/specific/utils/functions.php`, porque PHP da un error fatal.
 
-## Plantillas y portada
+### Plantillas y portada
 - Las plantillas ya no admiten PHP incrustado por `eval`.
 - Los valores con `'` se guardan como `&#039;`. Escapa la salida con `escapar()`, que no codifica dos veces.
 - La portada usa `portada.tpl` y `portada.ini`: `titulo` y `mensaje` de `main.ini` ya no se muestran en ella, y `/admin/main/init/main` da 404. `main.tpl` sigue en uso para `AdminHelper::delete`. Para personalizar la portada, usa `cfw/specific/lang/<código>/portada.ini` o `cfw/specific/templates/portada.tpl`. Una `main` propia en `cfw/specific/pages/main.php` debe declarar su lista de plantillas con `portada` (ver «Páginas, clases y funciones»). Un sitio derivado debe sustituir esta portada en producción, porque publica el framework y sus versiones.
 - El formulario de datos de `cuenta` pasa a `web/cuenta_usuario.tpl`, con `data-cifrar` y sin `name` en las contraseñas. `web/cuenta.tpl` lo pinta con `{aviso_cifrado}` y `{form_usuario}`. Si el sitio tiene su propia copia de `web/cuenta.tpl` en `cfw/specific/templates/`, actualízala: con la antigua no se ve el formulario nuevo, o las contraseñas se envían en claro y el servidor responde «formulario caducado».
 
-## Aspecto
+### Aspecto
 - `cascara.tpl` lleva `<!DOCTYPE html>`, así que el sitio pasa de modo quirks a modo estándar y cambia el pintado de tablas y alturas de línea. También añade `meta viewport`, `link rel="icon"` a `img/favicon.svg`, el nombre de la cabecera enlazado a la portada y `css/style.css?v=2`. Actualiza las copias de `cfw/specific/templates/cascara.tpl`.
 - `css/style.css` se reescribe. La regla `body` pasa de `tablas.css` a `style.css`, y `tablas.css` se carga con `?v=2`. Fusiona los cambios en el CSS propio del sitio. Clases nuevas: `mensaje`, `mensaje_Red`, `mensaje_Green`, `mensaje_Blue`, `form_cuenta`, `form_salir` y `acciones`.
 - Plantillas:
@@ -90,7 +99,7 @@ Cada proyecto adapta estos ficheros, que no están en `specific` y no se actuali
 - `users` tiene `$titulo_form` para el título del formulario: una subclase que cambie `$titulo` debe cambiarlo también.
 - `img/favicon.svg` es el icono de CFW: cada sitio pone el suyo.
 
-## Idiomas
+### Idiomas
 - Los `.ini` de idioma se fusionan por clave: `general` y `specific` de `lang_default`, y encima los del idioma actual. Un `specific/lang/<default>` ya no gana a `general/lang/<idioma>` entero, solo aporta sus claves. `text_error_usuario_mail` pasa a `textos.ini`.
 - `get_array_text` y `cfw/general/lang/es/menu.php` ya no se usan, aunque el fichero sigue en el árbol. Ya no se carga PHP desde `lang/`: un `menu.php` propio deja de aplicarse. El menú usa `{text_menu_inicio}` y `{text_menu_login}`.
 - `cfw/specific/lang/{es,en}/main.ini` siguen en el árbol y tienen prioridad sobre `general` en su idioma: cambiar `titulo` o `mensaje` en `cfw/general/lang/<código>/main.ini` no tiene efecto mientras existan esas claves en `specific`.
@@ -98,7 +107,7 @@ Cada proyecto adapta estos ficheros, que no están en `specific` y no se actuali
 - `titulo` y `singular` de las subclases de `AdminHelper` no se traducen solos: los define cada sitio.
 - `cfw/data/idiomas.ini` ya no se lee si es un enlace (por ejemplo, a una carpeta compartida de despliegue): el multiidioma se desactiva, `/admin/idiomas` muestra el aviso y queda una línea `CFW:` en el log en cada petición. Copia su contenido a un archivo normal o vuelve a guardar desde `/admin/idiomas` (ver «Multiidioma» en «Despliegue» de [INSTALACION.md](INSTALACION.md)).
 
-## Contraseñas
+### Contraseñas
 - **Migración desde md5.** Los md5 existentes se aceptan una vez y se convierten a `password_hash` en el primer login correcto, sin que nadie cambie su contraseña. Las cuentas que nunca inicien sesión siguen en md5. El hash también se renueva si cambia el coste de `PASSWORD_DEFAULT`, por ejemplo al cambiar de versión de PHP.
 - `comprobarUserPass` recibe la contraseña real, no su md5.
 - `AdminHelper::editfield` ya no admite el campo `pass`.
@@ -116,7 +125,7 @@ Cada proyecto adapta estos ficheros, que no están en `specific` y no se actuali
     ```
   - Rotar la clave privada también pone los contadores a cero. Sin una clave privada válida, el límite queda desactivado, con una línea `CFW:` en el log.
 
-## JavaScript
+### JavaScript
 - El login usa jQuery 4.0.0 (`js/jquery-4.0.0.min.js`); los formularios con contraseña, node-forge 1.4.2 (`js/forge-1.4.2.min.js`) y `js/cifrado.js`; y el listado de `AdminHelper`, Prototype 1.7.3 (`js/prototype-1.7.3.js`) con TableKit 1.3b. Prototype 1.7.3 lleva el aviso CVE-2020-27511 (ReDoS en `stripTags` y `unescapeHTML`), sin parche: no pases datos de usuario a esas funciones.
 - Se retira jHtmlArea: desaparecen `$jhtmlarea` de `AdminHelper` y la plantilla `elements_html`.
 - `main.js` solo conserva `sendLoginForm` y `devolver_mensaje`. Se eliminan `sendRegisterForm`, `comprobar_mail`, `sendAForm`, `muestraError`, `salir`, `sendFormUser` y los textos que usaban.

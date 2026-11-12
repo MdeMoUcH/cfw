@@ -7,14 +7,16 @@ CFW es un framework MVC en PHP que da una base con opciones básicas: portada, l
 - **`cfw/general/`** es el funcionamiento base de CFW.
 - **`cfw/specific/`** es la parte de cada proyecto. En este repositorio solo está su estructura, y lo que pongas ahí tiene prioridad sobre `general`.
 
+La versión de CFW está en `cfw/general/VERSION`. La numeración se explica en «Numeración» de [MIGRACION.md](MIGRACION.md).
+
 Las piezas MVC son:
 - **Controlador:** las clases de `pages/`, que heredan de `Page`.
 - **Modelo:** las clases de `orm/`, que heredan de `Orm`.
 - **Vista:** las plantillas `.tpl` de `templates/`, con `Template`. En ellas, `{nombre}` toma su valor de `$tpl->vars`, del `.ini` de la plantilla o, si empieza por `text_`, de `textos.ini`, y `{csrf}` da el token CSRF. Lo que no tenga valor queda vacío, salvo un `text_` que falte, que sale con su nombre, y los valores no se vuelven a expandir.
 
 ## Documentación
-- [INSTALACION.md](INSTALACION.md): requisitos, puesta en marcha, protección de `cfw/` con `.htaccess`, permisos de `cfw/data`, clave privada del cifrado y despliegue.
-- [MIGRACION.md](MIGRACION.md): qué revisar al actualizar a esta versión un sitio ya construido con CFW.
+- [INSTALACION.md](INSTALACION.md): requisitos, cómo crear un sitio desde una versión de CFW, puesta en marcha, protección de `cfw/` con `.htaccess`, permisos de `cfw/data`, clave privada del cifrado, despliegue y cómo actualizar un sitio a otra versión.
+- [MIGRACION.md](MIGRACION.md): regla de numeración y qué revisar al actualizar un sitio ya construido con CFW, con un apartado por versión.
 
 ## Enrutamiento
 Una petición se traduce en clase, método y hasta dos argumentos:
@@ -74,7 +76,7 @@ Se guardan con `password_hash` (`PASSWORD_DEFAULT`) y se comprueban con `passwor
 
 **Límite:** las contraseñas nuevas no pueden pasar de 72 bytes ni tener caracteres nulos (bcrypt ignora lo que sobra y `password_hash` falla con NUL).
 
-Los md5 de versiones anteriores se convierten a `password_hash` en el primer login correcto: ver «Contraseñas» en [MIGRACION.md](MIGRACION.md).
+Los md5 de versiones anteriores se convierten a `password_hash` en el primer login correcto: ver «Contraseñas» de «2.0.0 (desde 1.x)» en [MIGRACION.md](MIGRACION.md).
 
 ## Seguridad
 **Protecciones incluidas:**

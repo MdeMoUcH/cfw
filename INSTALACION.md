@@ -1,5 +1,5 @@
 # Instalación y despliegue
-Qué necesita CFW y cómo ponerlo en marcha. Para saber qué es y cómo funciona, ver [README.md](README.md).
+Qué necesita CFW, cómo crear un sitio con él, ponerlo en marcha y actualizarlo. Para saber qué es y cómo funciona, ver [README.md](README.md).
 
 ## Requisitos
 - PHP 8.2 o superior (probado en 8.2, 8.3, 8.4 y 8.5), Apache 2.4.10 o superior con `mod_rewrite`, `mod_headers` (`a2enmod headers`) y `.htaccess` activo, MySQL 5.7 y las extensiones `mysqli` y `openssl`.
@@ -7,6 +7,22 @@ Qué necesita CFW y cómo ponerlo en marcha. Para saber qué es y cómo funciona
 - La extensión `posix` se recomienda: sin ella no se comprueba el propietario de la clave privada (ver «Clave privada del cifrado»).
 - La extensión GD (con JPEG y PNG) solo hace falta para subir imágenes. Sin ella, `saveImage` devuelve `false`.
 - La extensión `mbstring` solo hace falta para `filtro_mysql_utf8`.
+
+## Crear un sitio
+Cada sitio es un clon de CFW en una versión, es decir, en su etiqueta de git (ver «Numeración» en [MIGRACION.md](MIGRACION.md)). El repositorio de CFW queda como remoto `cfw` y el del sitio como `origin`, y así el sitio se actualiza con git (ver «Actualizar un sitio»):
+```
+git clone --branch 2.0.0 https://github.com/MdeMoUcH/cfw.git mi-sitio
+cd mi-sitio
+git switch -c main
+git remote rename origin cfw
+git remote add origin <url del repositorio del sitio>
+git push -u origin main
+```
+- `git switch -c main` hace falta porque clonar en una etiqueta deja el HEAD desacoplado: sin una rama, los commits del sitio no quedan en ninguna.
+- El repositorio del sitio debe estar vacío, sin README ni licencia iniciales, o el `push` falla.
+- Lo propio del sitio va en `cfw/specific/` y en los archivos que el sitio adapta fuera de ella (ver «Qué se puede redefinir en `specific`» y «Qué queda fuera de `specific`» en [README.md](README.md)). No cambies `cfw/general/`: cada cambio ahí choca con los de CFW al actualizar.
+- `cfw/config.ini` está versionado: no subas sus datos reales al repositorio del sitio (ver «Puesta en marcha»).
+- Después, sigue con «Puesta en marcha».
 
 ## Puesta en marcha
 1. Carga `db.sql`. No crea ningún usuario.
@@ -110,4 +126,23 @@ chgrp www-data cfw/data && chmod 770 cfw/data
   - `get_ip` usa solo `REMOTE_ADDR`. Detrás de un proxy o balanceador, todos los visitantes comparten esa IP, así que cualquiera puede bloquear el login de un email durante 15 minutos desde el último fallo.
 - **Proxy que termina el TLS:** PHP no ve HTTPS y la cookie de sesión sale sin `Secure` (ver «Seguridad» en [README.md](README.md)). Configura el servidor para que PHP reciba `HTTPS=on` en esas peticiones.
 
-Para actualizar un sitio que ya usa CFW, ver [MIGRACION.md](MIGRACION.md).
+## Actualizar un sitio
+Para un sitio creado como en «Crear un sitio». Hazlo con el árbol de trabajo limpio y prueba el resultado en local antes de desplegarlo.
+1. Mira la versión del sitio en `cfw/general/VERSION`; si no existe, es 1.x.
+2. Trae las versiones de CFW y elige la nueva entre sus etiquetas:
+   ```
+   git fetch cfw
+   git tag --sort=v:refname
+   ```
+   La lista incluye también las etiquetas propias del sitio, si las tiene.
+3. Comprueba que la etiqueta, por ejemplo `2.0.0`, es la publicada: si CFW firma sus etiquetas, con `git tag -v 2.0.0`; si no, compara su commit (`git rev-parse "2.0.0^{commit}"`) con el de esa etiqueta en otra copia de CFW de confianza. Después, fusiónala:
+   ```
+   git merge 2.0.0
+   ```
+4. Resuelve los conflictos. Suelen salir en los archivos que el sitio adapta (`cfw/config.ini`, el `.htaccess` raíz, `db.sql`, `css/`, `js/` e `img/`, y los `.md` de CFW si el sitio los cambió): conserva lo propio del sitio y añade lo nuevo de CFW. Revisa esos archivos aunque no tengan conflictos, con «Archivos que revisar a mano» de cada versión en [MIGRACION.md](MIGRACION.md). El `cfw/config.ini` del servidor, con los datos reales, no lo cambia el `merge`: lleva a él a mano las opciones nuevas.
+5. Aplica los apartados de [MIGRACION.md](MIGRACION.md) de las versiones intermedias: los de todas las posteriores a la del sitio, hasta la nueva incluida, empezando por la más antigua. Incluyen las copias de `cfw/general/` que el sitio tenga en `cfw/specific/`, que no se actualizan solas.
+6. Despliega como siempre (ver «Despliegue»).
+
+- **Etiquetas:** las de CFW y las del sitio comparten nombres en el repositorio del sitio. No crees en el sitio etiquetas con números de versión de CFW, como `2.0.0`: `git fetch cfw` no podría traer la de CFW.
+- **Sitios 1.x que son un clon de este repositorio con otros remotos** (por ejemplo, CFW como `origin`): renómbralos como en «Crear un sitio» antes del paso 2, para que CFW quede como `cfw` y el repositorio del sitio como `origin` (en ese ejemplo, primero `git remote rename origin cfw`, y después el del sitio a `origin`, o añádelo con `git remote add` si no está). Si ya no tiene ningún remoto de CFW, añádelo con `git remote add cfw https://github.com/MdeMoUcH/cfw.git`. Compruébalo con `git remote -v`.
+- **Sitios 1.x que no son un clon de este repositorio:** no comparten historia con CFW, y `git merge` falla con «refusing to merge unrelated histories». Crea el sitio de nuevo como en «Crear un sitio», lleva a él `cfw/specific/` y los archivos que el sitio adapta, y aplica «2.0.0 (desde 1.x)» de [MIGRACION.md](MIGRACION.md). Desde ahí, ya se actualiza con estos pasos.
