@@ -20,7 +20,7 @@ git push -u origin main
 ```
 - `git switch -c main` hace falta porque clonar en una etiqueta deja el HEAD desacoplado: sin una rama, los commits del sitio no quedan en ninguna.
 - El repositorio del sitio debe estar vacío, sin README ni licencia iniciales, o el `push` falla.
-- Lo propio del sitio va en `cfw/specific/` y en los archivos que el sitio adapta fuera de ella (ver «Qué se puede redefinir en `specific`» y «Qué queda fuera de `specific`» en [README.md](README.md)). No cambies `cfw/general/`: cada cambio ahí choca con los de CFW al actualizar.
+- Lo propio del sitio va en `cfw/specific/` y en los archivos que el sitio adapta fuera de ella (ver «Qué se puede redefinir en `specific`» y «Qué queda fuera de `specific`» en [README.md](README.md)). No cambies `cfw/general/`: cada cambio ahí choca con los de CFW al actualizar. Cómo se construye sobre CFW está en [DESARROLLO.md](DESARROLLO.md).
 - No cambies `cfw/config.ini`, que trae los valores por defecto de CFW. Lo del sitio va en `cfw/specific/config.ini`, que se versiona, y lo de cada servidor, con las contraseñas, en `cfw/data/config.ini`, que no se versiona (ver «Puesta en marcha»).
 - Después, sigue con «Puesta en marcha».
 
@@ -168,7 +168,7 @@ Para un sitio creado como en «Crear un sitio». Hazlo con el árbol de trabajo 
    ```
    git merge 2.0.0
    ```
-4. Resuelve los conflictos. Suelen salir en los archivos que el sitio adapta (el `.htaccess` raíz, `db.sql`, `css/`, `js/` e `img/`, y los `.md` de CFW si el sitio los cambió): conserva lo propio del sitio y añade lo nuevo de CFW. Revisa esos archivos aunque no tengan conflictos, con «Archivos que revisar a mano» de cada versión en [MIGRACION.md](MIGRACION.md). La configuración no debería dar conflictos, porque el sitio no toca `cfw/config.ini`: las opciones nuevas que quieras cambiar van en `cfw/specific/config.ini` o, si son del servidor, en `cfw/data/config.ini`.
+4. Resuelve los conflictos. Suelen salir en los archivos que el sitio adapta (el `.htaccess` raíz, `db.sql`, `css/`, `js/` e `img/`, y los `.md` de CFW si el sitio los cambió): conserva lo propio del sitio y añade lo nuevo de CFW. Revisa esos archivos aunque no tengan conflictos, con «Archivos que revisar a mano» de cada versión en [MIGRACION.md](MIGRACION.md). Si CFW borra un fichero que el sitio cambió, como los `main.ini` de `cfw/specific/lang/` en 2.0.0, git da un conflicto «modify/delete»: consérvalo con `git add` o bórralo con `git rm`, según diga [MIGRACION.md](MIGRACION.md) para esa versión. La configuración no debería dar conflictos, porque el sitio no toca `cfw/config.ini`: las opciones nuevas que quieras cambiar van en `cfw/specific/config.ini` o, si son del servidor, en `cfw/data/config.ini`.
 5. Aplica los apartados de [MIGRACION.md](MIGRACION.md) de las versiones intermedias: los de todas las posteriores a la del sitio, hasta la nueva incluida, empezando por la más antigua. Incluyen las copias de `cfw/general/` que el sitio tenga en `cfw/specific/`, que no se actualizan solas.
 6. Despliega como siempre (ver «Despliegue»).
 

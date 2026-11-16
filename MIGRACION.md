@@ -108,8 +108,10 @@ Cada proyecto adapta estos ficheros, que no están en `specific` y no se actuali
 
 ### Idiomas
 - Los `.ini` de idioma se fusionan por clave: `general` y `specific` de `lang_default`, y encima los del idioma actual. Un `specific/lang/<default>` ya no gana a `general/lang/<idioma>` entero, solo aporta sus claves. `text_error_usuario_mail` pasa a `textos.ini`.
-- `get_array_text` y `cfw/general/lang/es/menu.php` ya no se usan, aunque el fichero sigue en el árbol. Ya no se carga PHP desde `lang/`: un `menu.php` propio deja de aplicarse. El menú usa `{text_menu_inicio}` y `{text_menu_login}`.
-- `cfw/specific/lang/{es,en}/main.ini` siguen en el árbol y tienen prioridad sobre `general` en su idioma: cambiar `titulo` o `mensaje` en `cfw/general/lang/<código>/main.ini` no tiene efecto mientras existan esas claves en `specific`.
+- Desaparecen `get_array_text` y `cfw/general/lang/es/menu.php`. Ya no se carga PHP desde `lang/`: un `menu.php` propio deja de aplicarse. El menú usa `{text_menu_inicio}` y `{text_menu_login}`. Si el sitio cambió `menu.php`, el merge da un conflicto «modify/delete»: bórralo con `git rm`.
+- CFW deja de traer `cfw/specific/lang/{es,en}/main.ini`: `titulo` y `mensaje` están en `cfw/general/lang/<código>/main.ini`, con los mismos valores, y en `cfw/specific/` CFW solo trae los `index.php` de protección.
+  - Si el sitio no cambió esos ficheros, el merge los borra sin que cambie nada.
+  - Si los cambió, el merge da un conflicto «modify/delete». Para conservarlos, `git add` del fichero; si no aportan nada, `git rm`.
 - Los `.ini` de idioma se leen con `INI_SCANNER_RAW`. Un fichero con una comilla sin cerrar o una línea sin clave se ignora y deja una línea `CFW:` en el log.
 - `titulo` y `singular` de las subclases de `AdminHelper` no se traducen solos: los define cada sitio.
 - `cfw/data/idiomas.ini` ya no se lee si es un enlace (por ejemplo, a una carpeta compartida de despliegue): el multiidioma se desactiva, `/admin/idiomas` muestra el aviso y queda una línea `CFW:` en el log en cada petición. Copia su contenido a un archivo normal o vuelve a guardar desde `/admin/idiomas` (ver «Multiidioma» en «Despliegue» de [INSTALACION.md](INSTALACION.md)).
