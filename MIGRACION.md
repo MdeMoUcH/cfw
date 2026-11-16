@@ -14,11 +14,12 @@ Debajo hay un apartado por versión, con la más reciente arriba, que dice qué 
 
 ### Archivos que revisar a mano
 Cada proyecto adapta estos ficheros, que no están en `specific` y no se actualizan solos:
-- `cfw/config.ini`: el sitio deja de adaptarlo. La configuración pasa a tres capas, que se fusionan clave a clave: `cfw/config.ini` (los valores por defecto de CFW), `cfw/specific/config.ini` (lo del sitio) y `cfw/data/config.ini` (lo de cada servidor). Ver el paso 3 de «Puesta en marcha» en [INSTALACION.md](INSTALACION.md). Reparte el `config.ini` actual entre los dos ficheros nuevos:
-  - En cada servidor, **antes de desplegar**, crea `cfw/data/config.ini` con las claves de servidor del `config.ini` actual: `db.*`, `urlbase`, `pathbase`, `desarrollo`, `analytics` y, si las usas, `cifrado.clave_privada` y las rutas de subida de `AdminHelper`. Si el servidor despliega con git y tiene `cfw/config.ini` modificado, descarta ese cambio después de copiarlo. El fichero no se versiona, y `rsync --delete` y `git clean -X` lo borran (ver «Despliegue»). Que sea del usuario que despliega, y pon la carpeta con el bit sticky, `chmod 1770 cfw/data`, para que Apache no pueda borrarlo ni sustituirlo (ver «Carpeta `cfw/data` y permisos» en [INSTALACION.md](INSTALACION.md)).
+- `cfw/config.ini`: el sitio deja de adaptarlo. La configuración pasa a tres capas, que se fusionan clave a clave: `cfw/config.ini` (los valores por defecto de CFW), `cfw/specific/config.ini` (lo del sitio) y `cfw/servidor.ini` (lo de cada servidor). Ver el paso 3 de «Puesta en marcha» en [INSTALACION.md](INSTALACION.md). Reparte el `config.ini` actual entre los dos ficheros nuevos:
+  - En cada servidor, **antes de desplegar**, crea `cfw/servidor.ini` con las claves de servidor del `config.ini` actual: `db.*`, `urlbase`, `pathbase`, `desarrollo`, `analytics` y, si las usas, `cifrado.clave_privada` y las rutas de subida de `AdminHelper`. Si el servidor despliega con git y tiene `cfw/config.ini` modificado, descarta ese cambio después de copiarlo. El fichero no se versiona, y `rsync --delete` y `git clean -X` lo borran (ver «Despliegue»). Que sea del usuario que despliega, con grupo `www-data` y modo 640, y que Apache no pueda escribir en `cfw/`, para que no pueda borrarlo ni sustituirlo. Pon también `cfw/data` con el bit sticky, `chmod 1770 cfw/data`, para que Apache no pueda borrar ni sustituir `cfw/data/.htaccess` (ver «Carpeta `cfw/data` y permisos» en [INSTALACION.md](INSTALACION.md)).
+  - Si el servidor ya usaba `cfw/data/config.ini`, de una versión de desarrollo de 2.0.0, muévelo a `cfw/servidor.ini` (`mv cfw/data/config.ini cfw/servidor.ini`) y revisa su grupo y su modo: ya no se lee, y mientras exista deja en el log una línea `CFW:` con su ruta en cada petición.
   - Crea y versiona `cfw/specific/config.ini` con lo propio del sitio: `name`, `description`, `keywords`, `lang_default`, `class.default`, `email` y las claves propias.
   - Recupera el de CFW durante el merge, con `git checkout 2.0.0 -- cfw/config.ini`.
-  - `langs` desaparece. `pathbase` sobra si es la raíz del sitio, que es su valor por defecto. La opción nueva y opcional `intentos.carpeta`, para guardar los contadores del límite de intentos en otra carpeta, va en `cfw/data/config.ini` (ver «Límite de intentos» en «Despliegue» de [INSTALACION.md](INSTALACION.md)).
+  - `langs` desaparece. `pathbase` sobra si es la raíz del sitio, que es su valor por defecto. La opción nueva y opcional `intentos.carpeta`, para guardar los contadores del límite de intentos en otra carpeta, va en `cfw/servidor.ini` (ver «Límite de intentos» en «Despliegue» de [INSTALACION.md](INSTALACION.md)).
   - `urlbase` y `pathbase` reciben la barra final si les falta. Un sitio que ponía `urlbase` sin barra y añadía `/` en sus plantillas obtendrá `//`.
   - Si `cfw/config.ini` tuvo contraseñas reales en el repositorio, cámbialas: siguen en su historia.
   - Los valores con comillas o barras invertidas van entre comillas dobles, y hay que comprobar que el fichero se ha leído bien: ver «Valores con comillas o barras invertidas» y «Comprueba que se ha leído bien» en el paso 3 de «Puesta en marcha».
@@ -30,9 +31,16 @@ Cada proyecto adapta estos ficheros, que no están en `specific` y no se actuali
   - Responde 403 a los archivos ocultos (salvo `.well-known`), a todo `cfw/` y a los `.ini`, `.sql`, `.tpl` y `.md`.
   - Se quita la regla que redirigía `/uploads` a `http://localhost/`. Si tu sitio guarda en `uploads/` archivos que no deben descargarse, llévalos fuera de la raíz web o bloquéalos con su propia regla (por ejemplo, `RewriteRule ^uploads(/|$) - [F,NC,L]`).
   - Se quitan las reglas de `/login/register` y `/login/restorepassword`, que no tenían método.
-- `cfw/data/.htaccess`, nuevo: cópialo también.
+- `cfw/.htaccess` y `cfw/data/.htaccess`, nuevos (`Require all denied`): cópialos también. `cfw/.htaccess` es la segunda barrera de `cfw/servidor.ini`, con los datos de la base de datos, si el `.htaccess` raíz pierde su regla de `cfw/`. CFW solo carga `cfw/` desde PHP, así que no bloquea nada que el sitio necesite.
 - `db.sql`:
   - La columna `pass` debe ser al menos `varchar(255)`.
+  - `email` de `usuarios` pasa a ser `UNIQUE`. En la BD de cada servidor:
+    1. Busca los duplicados, con `SELECT email, COUNT(*) FROM usuarios GROUP BY email HAVING COUNT(*) > 1;`. Las mayúsculas cuentan como iguales.
+    2. Resuélvelos: elige la fila que se queda y cambia el email de las demás (por ejemplo, `UPDATE usuarios SET email = CONCAT(email, '.duplicado-', id) WHERE id IN (...);`) o bórralas.
+    3. Añade el índice: `ALTER TABLE usuarios ADD UNIQUE KEY email (email);`. Falla con el error 1062 mientras quede algún duplicado.
+  - Mientras haya duplicados, esas cuentas no se pueden guardar desde `users` ni desde `cuenta`: se rechazan con «Ya existe un usuario con ese e-mail.».
+  - `Usuarios::insert` y `Usuarios::update` comprueban el email contra todas las filas, también las borradas: el email de un usuario borrado queda reservado.
+  - Con `utf8mb4` en MyISAM, o en InnoDB con `ROW_FORMAT=COMPACT`, un `varchar(255)` es demasiado largo para el índice («key too long»): acorta la columna o usa InnoDB `DYNAMIC`.
 - `css/`, `js/` e `img/`.
 - Las copias propias de páginas, clases, plantillas y textos en `cfw/specific/`.
 
@@ -61,8 +69,9 @@ Cada proyecto adapta estos ficheros, que no están en `specific` y no se actuali
 
 ### Páginas, clases y funciones
 - `saveImage`, `saveFile`, `guardarCategorias` y `load_template` pasan a `protected`.
-- `saveFile` solo acepta `tpl` y `css`, salvo que se redefina `$extensiones_permitidas`. Los nombres subidos se normalizan y `saveImage` pone siempre la extensión del tipo real.
+- `saveFile` solo acepta `tpl` y `css`, salvo que se redefina `$extensiones_permitidas`, y decide la extensión por el contenido, no por el MIME ni el nombre que envía el cliente (ver «Administración con `AdminHelper`» en [DESARROLLO.md](DESARROLLO.md)): un CSS con algo que parezca una etiqueta se guarda como `tpl`, y un `.tpl` sin etiquetas o un archivo que no sea UTF-8 se rechazan. Los nombres subidos se normalizan y `saveImage` pone siempre la extensión del tipo real.
 - Se eliminan `comprobarInvitado`, `getLastUserByFkIdUsuario` y `getUsersByFkIdUsuario` de `Usuarios`.
+- `Usuarios` tiene el método `protected` nuevo `emailRepetido`: un método con el mismo nombre en una subclase lo redefine.
 - PHP 8.2 da `Deprecated` con las propiedades dinámicas: las subclases de `cfw/specific/` deben declarar las suyas, con una visibilidad compatible con la del padre. `private` da un fatal, y `protected` también si el padre la declara `public`, como `$tabla` en `Orm` o `$vars` en `Page`.
 - Se eliminan la función global `saveImage` y `cfw/general/utils/images.php` (`saveImageProductos`). Usa `AdminHelper::saveImage`.
 - `main` solo pinta las plantillas de `$a_plantillas_permitidas`. Una `main` propia en `cfw/specific/pages/main.php` sustituye entera a la de `general`, sin heredar nada (ver los límites de «Qué se puede redefinir en `specific`» en [README.md](README.md)), así que debe partir de la `main` nueva y declarar su propia `$a_plantillas_permitidas`, con `portada`: una copiada de la versión anterior no tiene esa lista. Ampliar la propiedad solo vale en una subclase de `main` con otro nombre.
@@ -76,12 +85,13 @@ Cada proyecto adapta estos ficheros, que no están en `specific` y no se actuali
   - Una subclase con validaciones propias en `edit()` debe redefinir también `editfield`. Puede usar el método `protected` nuevo `rechazarEdicion($s_texto)`, que responde 400 con el texto escapado y termina. Un método con ese nombre en una subclase lo redefine (con una firma o una visibilidad incompatibles da un error fatal, y si lo declaras `public` se podrá llamar por URL); `editfield` termina tras llamarlo aunque la redefinición no lo haga.
 - `login::init()` ya no recibe un mensaje (antes `init($s_mensaje = "")`). Para llegar al login con un aviso, guarda con `guardarFlash` la clave de `textos.ini` del aviso, no el texto, y usa `redirigir`, como hace `cuenta`.
 - `Orm` solo acepta ids formados por dígitos en `getById`, `getActivoById`, `delete`, `update`, `updateField` y los demás métodos que reciben un id: con otro valor devuelven `false` y añaden un error a `errores`. `update` y `updateField` no escriben la clave primaria, y `updateField` solo admite columnas de `$campos`.
-- En `AdminHelper::form`, una subida fallida deshace el alta con un `DELETE` físico (`Orm::eliminarFila`), y `guardarSubidas` devuelve `bool`.
+- En `AdminHelper::form`, una subida fallida deshace el alta con un `DELETE` físico (`Orm::eliminarFila`), y `guardarSubidas` devuelve `bool`. Si la tabla no devuelve el id del alta (sin `AUTO_INCREMENT`), la fila se crea pero no se guardan sus subidas ni sus categorías, con el aviso `text_alta_sin_id` y una línea `CFW:` en el log; antes se usaba el id de la URL, que podía ser de otra fila. `hayAsociados`, `archivoEnviado` y `extensionPorContenido` son métodos `protected` nuevos: un método con el mismo nombre en una subclase los redefine.
 - `PaginaAdmin` es una interfaz nueva: una clase propia con ese nombre da un error fatal.
 - La etiqueta del listado de `AdminHelper` es `nombre`, si está vacío `name` y si no `email`, para cualquier slug. Antes, con el slug `users`, era siempre el `email`: un `AdminHelper` con ese slug y filas con `nombre` o `name` deja de mostrarlo.
 - `pass_valida` y `pass_hash` son funciones globales nuevas: no pueden repetirse en `cfw/specific/utils/functions.php`.
 - `t()` es global: una función `t` en `cfw/specific/utils/functions.php` da un fatal.
-- `intentos_carpeta`, `intentos_archivo`, `intentos_abrir`, `intentos_bloqueado`, `intentos_fallo` e `intentos_limpiar` son funciones globales nuevas: no pueden repetirse en `cfw/specific/utils/functions.php`, porque PHP da un error fatal.
+- `cuenta` muestra «Ya existe un usuario con ese e-mail.» si el email nuevo es de otra cuenta, en lugar del error genérico.
+- `intentos_carpeta`, `intentos_archivo`, `intentos_abrir`, `intentos_bloqueado`, `intentos_fallo`, `intentos_limpiar` e `intentos_purgar` son funciones globales nuevas: no pueden repetirse en `cfw/specific/utils/functions.php`, porque PHP da un error fatal.
 
 ### Plantillas y portada
 - Las plantillas ya no admiten PHP incrustado por `eval`.

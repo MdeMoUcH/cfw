@@ -171,13 +171,19 @@ function intentos_carpeta()
 	$app = new AppConf();
 	if(is_array($app->config) && array_key_exists("intentos.carpeta", $app->config))
 	{
-		//Sin barra final: lstat seguiría el enlace.
+		//Sin barra final ni "." o ".." al final: lstat seguiría el enlace.
 		$s_dir = is_string($app->config["intentos.carpeta"]) ? rtrim(trim($app->config["intentos.carpeta"]), $b_unix ? "/" : "/\\") : "";
+		$a_partes = preg_split($b_unix ? '#/#' : '#[/\\\\]#', $s_dir);
 		if(preg_match($b_unix ? '#^/#' : '#^[A-Za-z]:[\\\\/]#', $s_dir) !== 1)
 		{
 			error_log("CFW: intentos.carpeta no es una ruta absoluta (vacía, off/no/false/none o relativa); se usa ".$s_defecto);
 			$s_dir = $s_defecto;
 		}//if
+		elseif(in_array(end($a_partes), array(".", ".."), true))
+		{
+			error_log("CFW: carpeta de contadores de intentos rechazada, termina en . o ..: ".$s_dir);
+			return $s_carpeta;
+		}//elseif
 	}//if
 	
 	//Mismo criterio que Cifrado::carpetaSegura.
@@ -340,6 +346,10 @@ function intentos_fallo($s_clave, $b_ip = true)
 	$fd = intentos_abrir($s_archivo, true);
 	if(!$fd || !flock($fd, LOCK_EX))
 	{
+		if($fd)
+		{
+			fclose($fd);
+		}//if
 		error_log("CFW: no se pudo escribir un contador de intentos en ".dirname($s_archivo));
 		return;
 	}//if
@@ -359,21 +369,85 @@ function intentos_fallo($s_clave, $b_ip = true)
 	
 	if(mt_rand(1, 100) == 1)
 	{
-		foreach(glob(dirname($s_archivo)."/*") as $s_viejo)
-		{
-			if((time() - filemtime($s_viejo)) >= CFW_INTENTOS_VENTANA)
-			{
-				@unlink($s_viejo);
-			}//if
-		}//foreach
+		intentos_purgar(intentos_carpeta());
 	}//if
 }//fun intentos_fallo
+
+
+//Borra los contadores caducados: solo archivos normales con nombre de contador (64 hex, o 32 de versiones anteriores),
+//sin seguir enlaces y dejándolo si la carpeta deja de ser la misma (dev/ino).
+function intentos_purgar($s_dir)
+{
+	//Sin barra final ni "." o ".." al final: lstat seguiría el enlace.
+	$b_unix = PHP_OS_FAMILY !== "Windows";
+	$s_dir = rtrim((string)$s_dir, $b_unix ? "/" : "/\\");
+	if($s_dir === "")
+	{
+		return;
+	}//if
+	$a_partes = preg_split($b_unix ? '#/#' : '#[/\\\\]#', $s_dir);
+	if(in_array(end($a_partes), array(".", ".."), true))
+	{
+		error_log("CFW: ruta de contadores de intentos no válida para la limpieza: ".$s_dir);
+		return;
+	}//if
+	
+	clearstatcache();
+	$a_dir = @lstat($s_dir);
+	if(!$a_dir || ($a_dir["mode"] & 0170000) !== 0040000)
+	{
+		return;
+	}//if
+	
+	$dh = @opendir($s_dir);
+	if(!$dh)
+	{
+		return;
+	}//if
+	
+	$b_misma = true;
+	while($b_misma && ($s_nombre = readdir($dh)) !== false)
+	{
+		if(preg_match('/^(?:[0-9a-f]{64}|[0-9a-f]{32})$/D', $s_nombre) !== 1)
+		{
+			continue;
+		}//if
+		
+		clearstatcache();
+		$a_ahora = @lstat($s_dir);
+		$b_misma = $a_ahora && ($a_ahora["mode"] & 0170000) === 0040000
+			&& $a_ahora["dev"] === $a_dir["dev"] && $a_ahora["ino"] === $a_dir["ino"];
+		$a_entrada = $b_misma ? @lstat($s_dir."/".$s_nombre) : false;
+		if(!$a_entrada || ($a_entrada["mode"] & 0170000) !== 0100000 || (time() - $a_entrada["mtime"]) < CFW_INTENTOS_VENTANA)
+		{
+			continue;
+		}//if
+		
+		clearstatcache();
+		$a_ahora = @lstat($s_dir);
+		$b_misma = $a_ahora && ($a_ahora["mode"] & 0170000) === 0040000
+			&& $a_ahora["dev"] === $a_dir["dev"] && $a_ahora["ino"] === $a_dir["ino"];
+		if($b_misma)
+		{
+			@unlink($s_dir."/".$s_nombre);
+		}//if
+	}//while
+	closedir($dh);
+	
+	if(!$b_misma)
+	{
+		error_log("CFW: la carpeta de contadores de intentos cambió durante la limpieza: ".$s_dir);
+	}//if
+}//fun intentos_purgar
 
 
 function intentos_limpiar($s_clave, $b_ip = true)
 {
 	$s_archivo = intentos_archivo($s_clave, $b_ip);
-	if($s_archivo != "" && is_file($s_archivo))
+	//lstat no sigue enlaces: se borra lo que haya en la ruta (archivo, FIFO, enlace aunque esté roto), nunca su destino, salvo una carpeta.
+	clearstatcache(true, $s_archivo);
+	$a_lstat = $s_archivo != "" ? @lstat($s_archivo) : false;
+	if($a_lstat && ($a_lstat["mode"] & 0170000) !== 0040000)
 	{
 		@unlink($s_archivo);
 	}//if

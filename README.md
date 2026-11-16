@@ -45,14 +45,14 @@ El `.htaccess` raíz solo define las rutas `/admin/...` y `/login`, además de `
 | `templates/` | Sustituye a la plantilla con la misma ruta. |
 | `lang/<código>/` | Se fusiona clave a clave con los textos de `general`, con prioridad sobre ellos dentro del mismo idioma. |
 | `utils/functions.php` | Se carga además del de `general`. |
-| `config.ini` | Se fusiona clave a clave con `cfw/config.ini`, con prioridad sobre él. Encima de ambos va `cfw/data/config.ini`, el del servidor. |
+| `config.ini` | Se fusiona clave a clave con `cfw/config.ini`, con prioridad sobre él. Encima de ambos va `cfw/servidor.ini`, el del servidor. |
 
 La sustitución es del fichero entero y no hay carga automática de clases nuevas: ver «Dónde va cada cosa» en [DESARROLLO.md](DESARROLLO.md).
 
 ## Qué queda fuera de `specific`
-Cada proyecto también adapta estos ficheros, que no están en `specific`: el `.htaccess` raíz, `db.sql`, `css/`, `js/` e `img/`. Al actualizar CFW en un proyecto hay que revisarlos a mano (ver [MIGRACION.md](MIGRACION.md)). `cfw/data/` guarda lo que escribe la aplicación y `cfw/data/config.ini`, que escribe la persona. Su contenido no se versiona, salvo su `.htaccess`.
+Cada proyecto también adapta estos ficheros, que no están en `specific`: el `.htaccess` raíz, `db.sql`, `css/`, `js/` e `img/`. Al actualizar CFW en un proyecto hay que revisarlos a mano (ver [MIGRACION.md](MIGRACION.md)). `cfw/data/` guarda lo que escribe la aplicación; su contenido no se versiona, salvo su `.htaccess`. La configuración del servidor, `cfw/servidor.ini`, la escribe la persona, va fuera de `cfw/data` para que Apache solo pueda leerla y tampoco se versiona.
 
-La configuración va en tres capas, y cada una pisa a la anterior clave a clave: `cfw/config.ini` trae los valores por defecto de CFW y el sitio no lo toca; `cfw/specific/config.ini` es lo propio del sitio que no es secreto y se versiona con él; y `cfw/data/config.ini` es lo de cada servidor (base de datos, `urlbase`, `desarrollo`...) y no se versiona. Ver «Puesta en marcha» en [INSTALACION.md](INSTALACION.md).
+La configuración va en tres capas, y cada una pisa a la anterior clave a clave: `cfw/config.ini` trae los valores por defecto de CFW y el sitio no lo toca; `cfw/specific/config.ini` es lo propio del sitio que no es secreto y se versiona con él; y `cfw/servidor.ini` es lo de cada servidor (base de datos, `urlbase`, `desarrollo`...), no se versiona y Apache solo lo lee. Ver «Puesta en marcha» en [INSTALACION.md](INSTALACION.md).
 
 ## Idiomas
 Los textos están en `cfw/general/lang/<código>/` (`textos.ini` y un `.ini` por plantilla). Los de `cfw/specific/lang/<código>/` tienen prioridad, clave a clave.

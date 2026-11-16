@@ -21,14 +21,14 @@ git push -u origin main
 - `git switch -c main` hace falta porque clonar en una etiqueta deja el HEAD desacoplado: sin una rama, los commits del sitio no quedan en ninguna.
 - El repositorio del sitio debe estar vacío, sin README ni licencia iniciales, o el `push` falla.
 - Lo propio del sitio va en `cfw/specific/` y en los archivos que el sitio adapta fuera de ella (ver «Qué se puede redefinir en `specific`» y «Qué queda fuera de `specific`» en [README.md](README.md)). No cambies `cfw/general/`: cada cambio ahí choca con los de CFW al actualizar. Cómo se construye sobre CFW está en [DESARROLLO.md](DESARROLLO.md).
-- No cambies `cfw/config.ini`, que trae los valores por defecto de CFW. Lo del sitio va en `cfw/specific/config.ini`, que se versiona, y lo de cada servidor, con las contraseñas, en `cfw/data/config.ini`, que no se versiona (ver «Puesta en marcha»).
+- No cambies `cfw/config.ini`, que trae los valores por defecto de CFW. Lo del sitio va en `cfw/specific/config.ini`, que se versiona, y lo de cada servidor, con las contraseñas, en `cfw/servidor.ini`, que no se versiona (ver «Puesta en marcha»).
 - Después, sigue con «Puesta en marcha».
 
 ## Puesta en marcha
 1. Carga `db.sql`. No crea ningún usuario.
 2. Crea el primer administrador con el `INSERT` de ejemplo comentado en `db.sql`, con tu email y el hash de tu contraseña generado con `password_hash`.
-3. Configura el sitio. CFW lee `cfw/config.ini` (sus valores por defecto, que no se tocan), después `cfw/specific/config.ini` y por último `cfw/data/config.ini`, y cada uno pisa al anterior clave a clave. Los dos últimos son opcionales, y las secciones (`[general]`...) solo sirven para ordenar.
-   - **`cfw/data/config.ini`**, en cada servidor y sin versionar: los datos de la base de datos (`db.*`), `urlbase` (la URL del sitio), `desarrollo` y `analytics`, y `pathbase` (la ruta absoluta de la raíz del sitio) solo si no es la carpeta donde está instalado, que es su valor por defecto. Si a `urlbase` o `pathbase` les falta la barra final, se les añade. `desarrollo = true` muestra errores y detalles; no lo actives en un servidor público. Aquí van también `intentos.carpeta` y `cifrado.clave_privada`, si los usas, y normalmente las rutas de subida de `AdminHelper` (ver «Carpeta `cfw/data` y permisos»). Por ejemplo:
+3. Configura el sitio. CFW lee `cfw/config.ini` (sus valores por defecto, que no se tocan), después `cfw/specific/config.ini` y por último `cfw/servidor.ini`, y cada uno pisa al anterior clave a clave. Los dos últimos son opcionales, y las secciones (`[general]`...) solo sirven para ordenar.
+   - **`cfw/servidor.ini`**, en cada servidor y sin versionar, fuera de `cfw/data` para que Apache solo pueda leerlo: los datos de la base de datos (`db.*`), `urlbase` (la URL del sitio), `desarrollo` y `analytics`, y `pathbase` (la ruta absoluta de la raíz del sitio) solo si no es la carpeta donde está instalado, que es su valor por defecto. Si a `urlbase` o `pathbase` les falta la barra final, se les añade. `desarrollo = true` muestra errores y detalles; no lo actives en un servidor público. Aquí van también `intentos.carpeta` y `cifrado.clave_privada`, si los usas, y normalmente las rutas de subida de `AdminHelper` (ver «Carpeta `cfw/data` y permisos»). Por ejemplo:
      ```
      [entorno]
      desarrollo = false
@@ -43,28 +43,29 @@ git push -u origin main
      db.name = basededatos
      ```
    - **`cfw/specific/config.ini`**, versionado con el sitio: `name`, `description`, `keywords`, `lang_default`, `class.default`, `email` y las claves propias del sitio. Nada secreto.
-   - Un fichero mal formado se ignora entero, como si no existiera, y deja una línea `CFW:` en el log con su ruta, sin su contenido. Si se ignora `cfw/data/config.ini`, el sitio se queda sin base de datos.
-   - **Permisos:** Apache tiene que poder leerlos. Lo recomendable es que `cfw/data/config.ini` sea del usuario que despliega, con grupo `www-data` y modo 640 (`chgrp www-data cfw/data/config.ini && chmod 640 cfw/data/config.ini`), y que la carpeta tenga el bit sticky (ver «Carpeta `cfw/data` y permisos»).
+   - Un fichero mal formado se ignora entero, como si no existiera, y deja una línea `CFW:` en el log con su ruta, sin su contenido. Si se ignora `cfw/servidor.ini`, el sitio se queda sin base de datos.
+   - Un `cfw/data/config.ini` de una versión anterior ya no se lee: deja una línea `CFW:` en el log con su ruta en cada petición. Pasa su contenido a `cfw/servidor.ini` y bórralo (ver [MIGRACION.md](MIGRACION.md)).
+   - **Permisos:** Apache tiene que poder leerlos. Lo recomendable es que `cfw/servidor.ini` sea del usuario que despliega, con grupo `www-data` y modo 640 (`chgrp www-data cfw/servidor.ini && chmod 640 cfw/servidor.ini`), y que Apache no pueda escribir en `cfw/` (ver «Carpeta `cfw/data` y permisos»): así no puede borrarlo ni sustituirlo.
    - **Valores con comillas o barras invertidas**, como muchas contraseñas: escríbelos entre comillas dobles, con `\"` por cada `"`, `\\` por cada `\` y `\${` en lugar de `${`, que si no se toma como una variable de entorno y desaparece sin error. Los demás caracteres (`;`, `!`, `=`, `(`, `'`, `$`...) salen tal cual entre comillas dobles. Por ejemplo, la contraseña `p"a\b${c` se escribe `db.pass = "p\"a\\b\${c"`. No uses comillas simples: no admiten `'`, y una `\` antes de la comilla hace que se pierdan sin error las claves que van detrás.
    - **Comprueba que se ha leído bien**, sin mostrar los valores, desde la raíz del sitio y como Apache (ver «Órdenes como Apache» en «Carpeta `cfw/data` y permisos»):
      ```
-     sudo -u www-data php -r '$c = @parse_ini_file("cfw/data/config.ini"); if (!is_array($c)) exit("no válido\n"); foreach ($c as $k => $v) echo $k, " ", is_array($v) ? "array" : strlen($v), "\n";'
+     sudo -u www-data php -r '$c = @parse_ini_file("cfw/servidor.ini"); if (!is_array($c)) exit("no válido\n"); foreach ($c as $k => $v) echo $k, " ", is_array($v) ? "array" : strlen($v), "\n";'
      ```
      Debe listar todas las claves, cada una con la longitud que esperas para su valor (en bytes: una letra con tilde cuenta 2). Una clave que falte indica una línea mal escrita antes de ella, y una longitud distinta, una comilla o una barra mal escapadas. Haz lo mismo con `cfw/specific/config.ini`.
 4. Usa siempre HTTPS. El framework no lo fuerza, y el cifrado de las contraseñas no lo sustituye.
 5. Comprueba que Apache aplica los `.htaccess` (ver «Protección de `cfw/` con `.htaccess`»).
 
 ## Protección de `cfw/` con `.htaccess`
-Lo único que impide descargar `cfw/` son el `.htaccess` raíz y `cfw/data/.htaccess`. Ahí están la clave privada del cifrado, `cfw/data/config.ini` con los datos de la base de datos y `cfw/data/idiomas.ini`. El `.htaccess` raíz también bloquea los `.sql`, `.md`, `.ini` y `.tpl` y los archivos ocultos, como `.git/`. **Si el servidor no lee los `.htaccess`, no da ningún error: sirve esos archivos tal cual.**
+Lo único que impide descargar `cfw/` son el `.htaccess` raíz, `cfw/.htaccess` y `cfw/data/.htaccess`; los dos últimos lo deniegan todo (`Require all denied`), como segunda barrera si se pierde la regla de `cfw/` del raíz. Ahí están la clave privada del cifrado, `cfw/servidor.ini` con los datos de la base de datos y `cfw/data/idiomas.ini`. El `.htaccess` raíz también bloquea los `.sql`, `.md`, `.ini` y `.tpl` y los archivos ocultos, como `.git/`. **Si el servidor no lee los `.htaccess`, no da ningún error: sirve esos archivos tal cual.**
 - **Apache con `AllowOverride None`.** Es el valor por defecto de Apache desde la 2.3.9, y el que trae Debian/Ubuntu para `/var/www/` en `apache2.conf`. Pon `AllowOverride All` en el `<Directory>` del sitio (o en su `VirtualHost`) y reinicia Apache. La imagen oficial de Docker `php:*-apache` ya lo hace en `docker-php.conf`; un Apache instalado con `apt` no.
 - **nginx, Caddy, LiteSpeed sin soporte de `.htaccess` u otro servidor.** Ignoran los `.htaccess`. CFW no está preparado para ellos: habría que traducir a su configuración todas las reglas del `.htaccess` raíz, incluidos los bloqueos.
 - **Comprobación.** Hazla tras instalar y tras cada cambio de servidor o de configuración. Las tres URL deben dar `403`:
   ```
   curl -s -o /dev/null -w '%{http_code}\n' https://tu-sitio/cfw/data/clave_privada.pem
-  curl -s -o /dev/null -w '%{http_code}\n' https://tu-sitio/cfw/data/config.ini
+  curl -s -o /dev/null -w '%{http_code}\n' https://tu-sitio/cfw/servidor.ini
   curl -s -o /dev/null -w '%{http_code}\n' https://tu-sitio/db.sql
   ```
-  Un `200` significa que el archivo se descarga: corrige el servidor y, si era la clave privada, rótala (ver «Clave privada del cifrado»). Si era `cfw/data/config.ini`, cambia también la contraseña de la base de datos. Otra pista: si los `.htaccess` no se aplican, `/login` y `/admin` dan 404.
+  Un `200` significa que el archivo se descarga: corrige el servidor y, si era la clave privada, rótala (ver «Clave privada del cifrado»). Si era `cfw/servidor.ini`, cambia también la contraseña de la base de datos. Otra pista: si los `.htaccess` no se aplican, `/login` y `/admin` dan 404.
 - **Comprobación de las cabeceras de seguridad.** Debe mostrar `X-Frame-Options: DENY` una sola vez. Si no sale, falta `mod_headers` (ver «Requisitos»):
   ```
   curl -sI https://tu-sitio/css/style.css | grep -i x-frame-options
@@ -72,20 +73,19 @@ Lo único que impide descargar `cfw/` son el `.htaccess` raíz y `cfw/data/.htac
 - Aun con los `.htaccess` activos, lo más seguro es tener la clave privada fuera de la raíz web (ver «Otra ubicación» en «Clave privada del cifrado»).
 
 ## Carpeta `cfw/data` y permisos
-Apache escribe en `cfw/data/` la clave privada del cifrado y los contadores del límite de intentos (`cfw/data/intentos/`), si no se configura otra ubicación, y la opción de multiidioma, `cfw/data/idiomas.ini` (ver «Idiomas» en [README.md](README.md)). Ahí está también `cfw/data/config.ini`, la configuración del servidor, que escribes tú (ver «Puesta en marcha»). Apache no lo modifica, pero como escribe en la carpeta podría borrarlo o sustituirlo, aunque sea 640 y de otro usuario: lo impide el bit sticky de la orden de abajo.
+Apache escribe en `cfw/data/` la clave privada del cifrado y los contadores del límite de intentos (`cfw/data/intentos/`), si no se configura otra ubicación, y la opción de multiidioma, `cfw/data/idiomas.ini` (ver «Idiomas» en [README.md](README.md)). La configuración del servidor no va aquí, sino en `cfw/servidor.ini`, donde Apache solo puede leerla (ver «Puesta en marcha»). Como Apache escribe en la carpeta, podría borrar o sustituir lo que no es suyo, como `cfw/data/.htaccess`: lo impide el bit sticky de la orden de abajo.
 
 Antes de usarla, da a Apache permiso sobre la carpeta. La aplicación crea el fichero la primera vez que guardas. Esta orden, como todas las de este documento con rutas relativas, se ejecuta desde la raíz del sitio:
 ```
 chgrp www-data cfw/data && chmod 1770 cfw/data
 ```
 - Repite esta orden tras un clon nuevo, porque git no conserva el grupo ni el modo. `chgrp` puede requerir privilegios.
-- **El bit sticky (el `1` de `1770`)** impide que Apache borre o renombre en `cfw/data` lo que no es suyo. Sin él, un fallo que le dejara escribir en `cfw/data` con un nombre elegido le bastaría para cambiar `cfw/data/config.ini` y, con ello, `pathbase` (qué PHP se incluye), `desarrollo`, `cifrado.clave_privada` o `intentos.carpeta`. Para que proteja:
-  - `cfw/data/config.ini` tiene que existir y ser del usuario que despliega: si falta, Apache puede crearlo. Créalo aunque esté vacío.
+- **El bit sticky (el `1` de `1770`)** impide que Apache borre o renombre en `cfw/data` lo que no es suyo. Sin él, un fallo que le dejara escribir en `cfw/data` con un nombre elegido le bastaría para borrar o sustituir `cfw/data/.htaccess`, que protege lo que guarda la carpeta. Para que proteja:
   - La carpeta `cfw/data` no puede ser de Apache.
   - Lo que crea Apache en ella (`clave_privada.pem`, `idiomas.ini` e `intentos/`) tiene que ser suyo, como queda al crearlo él; si no, no podrá sustituirlo ni borrarlo.
   - Para borrar o apartar como Apache algo de `cfw/data` que no es suyo (por ejemplo, una clave privada o una carpeta `intentos` de otro usuario), quita el bit a la carpeta mientras dura la operación: `chmod -t cfw/data` antes y `chmod +t cfw/data` después, con `sudo` si no eres su propietario.
-- Apache no debe ser propietario ni tener escritura, tampoco de grupo, sobre la raíz del sitio, `cfw/`, `js/` ni el resto de archivos y carpetas, salvo `cfw/data`, las carpetas de subida y las rutas propias de `intentos.carpeta` y `cifrado.clave_privada` dentro de `cfw/` (ver abajo). Ahí están el código, los textos (que se pintan sin escapar) y `js/cifrado.js`, que cifra las contraseñas en el navegador: quien pueda escribir en ellos puede inyectar código en todo el sitio, incluida la administración, o capturar las contraseñas.
-  - Las carpetas de subida son las que una subclase de `AdminHelper` toma de la configuración (normalmente de `cfw/data/config.ini`): `<config_name>.path` para `saveFile` y `<config_name>.img.path` para `saveImage`, con barra final, que aquí no se añade sola, a diferencia de `urlbase` y `pathbase`. Apache tiene que poder escribir en ellas. Deben ser carpetas solo para subidas, sin código ni otros archivos del sitio: no pueden ser la raíz, `css/`, `img/` ni `js/`, ni estar en `cfw/` o dentro de ella (incluidas `cfw/general` y `cfw/specific`). El CFW base no configura ninguna.
+- Apache no debe ser propietario ni tener escritura, tampoco de grupo, sobre la raíz del sitio, `cfw/`, `js/` ni el resto de archivos y carpetas, salvo `cfw/data`, las carpetas de subida y las rutas propias de `intentos.carpeta` y `cifrado.clave_privada` dentro de `cfw/` (ver abajo). Ahí están el código, la configuración del servidor (`cfw/servidor.ini`), los textos (que se pintan sin escapar) y `js/cifrado.js`, que cifra las contraseñas en el navegador: quien pueda escribir en ellos puede inyectar código en todo el sitio, incluida la administración, o capturar las contraseñas.
+  - Las carpetas de subida son las que una subclase de `AdminHelper` toma de la configuración (normalmente de `cfw/servidor.ini`): `<config_name>.path` para `saveFile` y `<config_name>.img.path` para `saveImage`, con barra final, que aquí no se añade sola, a diferencia de `urlbase` y `pathbase`. Apache tiene que poder escribir en ellas. Deben ser carpetas solo para subidas, sin código ni otros archivos del sitio: no pueden ser la raíz, `css/`, `img/` ni `js/`, ni estar en `cfw/` o dentro de ella (incluidas `cfw/general` y `cfw/specific`). El CFW base no configura ninguna.
   - Para comprobarlo, ejecuta esta orden desde la raíz del sitio. No debe mostrar nada, salvo las carpetas de subida y su contenido, y las rutas de `intentos.carpeta` o `cifrado.clave_privada` si las pones dentro de `cfw/` pero fuera de `cfw/data`, que la regla de `cfw/` del `.htaccess` raíz también bloquea (los paréntesis hacen falta para que `-print` cubra las dos condiciones, y el `-print` explícito, para que no salga `cfw/data`):
     ```
     sudo -u www-data find . -path ./cfw/data -prune -o \( -writable -o -user www-data \) -print
@@ -110,8 +110,8 @@ chgrp www-data cfw/data && chmod 1770 cfw/data
   - La carpeta no puede tener escritura para todos (por ejemplo 777 o `/tmp`). Se admite la de grupo, como el 775 de un clon o el 1770 con el grupo de Apache (ver «Carpeta `cfw/data` y permisos»), y cualquier propietario, también root. Para corregirlo: `chmod o-w cfw/data`. La carpeta de los contadores de intentos sigue la misma regla para la carpeta que la contiene (ver «Despliegue»).
   - El propietario solo se comprueba con la extensión `posix`, que se recomienda tener. Sin ella la garantía es más débil: se acepta una clave de cualquier propietario si cumple el resto (archivo normal, sin escritura de grupo ni de otros ni lectura de otros, carpeta sin escritura para todos), y al generarla queda una línea `CFW:` en el log que lo avisa. En Windows no se comprueban propietario ni permisos, solo que no sea un enlace.
 - Para rotarla, bórrala como Apache. Si Apache puede escribir en la carpeta, se crea otra en la siguiente petición; si no, dale la escritura temporal para borrarla y generar otra a mano (ver arriba). Solo fallan una vez los formularios que estaban abiertos. Rotarla también levanta los bloqueos en curso del límite de intentos, porque los nombres de los contadores dependen de ella (ver «Límite de intentos» en «Despliegue»).
-- En `cfw/data/` solo la protegen el `.htaccess` raíz y `cfw/data/.htaccess`. Si el servidor no los aplica (nginx o `AllowOverride None`), se puede descargar sin que se avise de nada: ver «Protección de `cfw/` con `.htaccess`». Con varios servidores, todos deben compartir la misma clave.
-- **Otra ubicación**, por ejemplo fuera de la raíz web: añade a `cfw/data/config.ini` la opción `cifrado.clave_privada` con la ruta absoluta del archivo, en su propia sección:
+- En `cfw/data/` solo la protegen el `.htaccess` raíz, `cfw/.htaccess` y `cfw/data/.htaccess`. Si el servidor no los aplica (nginx o `AllowOverride None`), se puede descargar sin que se avise de nada: ver «Protección de `cfw/` con `.htaccess`». Con varios servidores, todos deben compartir la misma clave.
+- **Otra ubicación**, por ejemplo fuera de la raíz web: añade a `cfw/servidor.ini` la opción `cifrado.clave_privada` con la ruta absoluta del archivo, en su propia sección:
   ```
   [cifrado]
   cifrado.clave_privada = "/srv/cfw-claves/clave_privada.pem"
@@ -120,7 +120,7 @@ chgrp www-data cfw/data && chmod 1770 cfw/data
   - PHP debe poder leer el archivo (también con `open_basedir`, si lo usas). Se aplican los mismos permisos exigidos de arriba. Para que se genere solo, Apache tiene que poder escribir en la carpeta. Si no, genérala a mano como se explica arriba, con esa ruta y dando la escritura temporal en su carpeta, no en `cfw/data` (si no es del grupo `www-data`, pásala antes a ese grupo, por ejemplo con `sudo chgrp www-data /srv/cfw-claves`). Después la carpeta puede quedar sin escritura para Apache, que es lo más seguro. Apache tampoco debe poder escribir en la carpeta que la contiene ni ser su propietario, porque podría cambiarla por un enlace. No uses una carpeta compartida ni una dentro de la raíz web y fuera de `cfw/`.
 
 ## Despliegue
-- **Configuración del servidor** (`cfw/data/config.ini`): conserva el fichero entre despliegues. Un `rsync --delete` o un `git clean -X` lo borran, y el sitio se queda sin base de datos.
+- **Configuración del servidor** (`cfw/servidor.ini`): conserva el fichero entre despliegues. Un `rsync --delete` o un `git clean -X` lo borran, y el sitio se queda sin base de datos.
 - **Multiidioma** (`cfw/data/idiomas.ini`):
   - Conserva el fichero entre despliegues. Un `rsync --delete` o un `git clean -X` lo borran: el multiidioma se desactiva y `/admin/idiomas` muestra un aviso.
   - La opción está pensada para un solo servidor: con varios, el fichero no se comparte entre ellos.
@@ -128,7 +128,7 @@ chgrp www-data cfw/data && chmod 1770 cfw/data
   - Se crea con modo 0640, salvo que una ACL por defecto de `cfw/data` dé otro sin permisos para otros (por ejemplo, 0660). Si la ACL da permisos para otros, o quita al propietario la lectura o la escritura, el guardado falla con el mensaje de error y una línea `CFW:` en el log.
 - **Clave privada:** con varios servidores, todos deben compartir la misma clave (ver «Clave privada del cifrado»).
 - **Límite de intentos** (ver «Seguridad» en [README.md](README.md)): los contadores son archivos en `cfw/data/intentos/`, si no se configura otra carpeta.
-  - **Otra carpeta**, por ejemplo fuera de la raíz web: añade a `cfw/data/config.ini` la opción `intentos.carpeta`, en su propia sección:
+  - **Otra carpeta**, por ejemplo fuera de la raíz web: añade a `cfw/servidor.ini` la opción `intentos.carpeta`, en su propia sección:
     ```
     [intentos]
     intentos.carpeta = "/srv/cfw-intentos/intentos"
@@ -136,12 +136,12 @@ chgrp www-data cfw/data && chmod 1770 cfw/data
     Las reglas de la ruta son las de `cifrado.clave_privada`: absoluta (`/…`; en Windows, `C:\…` o `C:/…`) y sin los espacios del principio y del final; además se quitan las barras finales. A diferencia de la clave, un valor no válido (vacío, `off`, `no`, `false`, `none`, relativo o `/`) no desactiva nada: se usa `cfw/data/intentos` y queda una línea `CFW:` en el log en cada intento de login o de guardado en `cuenta` con la contraseña actual.
     La carpeta que la contiene (en el ejemplo, `/srv/cfw-intentos`) tiene que ser propia, como la de la clave en «Otra ubicación», porque Apache crea en ella la de intentos (ver «Creación»). Apache tampoco debe poder escribir en la carpeta que contiene esta ni ser su propietario.
   - **Comprobaciones de la carpeta**, al crearla y en cada petición que la usa:
-    - La carpeta no puede ser un enlace (solo se comprueba la última parte de la ruta).
+    - La carpeta no puede ser un enlace (solo se comprueba la última parte de la ruta). Una ruta configurada que acaba en `.` o `..` se rechaza.
     - Su propietario debe ser el usuario con el que corre PHP (solo con la extensión `posix`; sin ella queda una línea `CFW:` al crearla).
     - Ni el grupo ni otros pueden tener escritura sobre ella: 0700, 0750 o 0755. Se recomienda 0700, el modo con que la crea la aplicación: con 0750 o 0755, el grupo u otros usuarios pueden listar los contadores y ven cuántos hay, cuándo se escribieron y su número de fallos. No ven la IP ni el email: el nombre de cada contador es un HMAC-SHA256 de la IP y el email (en `cuenta`, del usuario) con un secreto derivado de la clave privada, y no se puede invertir sin ella.
     - La carpeta que la contiene no puede tener escritura para todos (por ejemplo 777 o `/tmp`), la misma regla que la carpeta de la clave privada. Se admite la de grupo, como el 775 de un clon.
     - En Windows solo se comprueba que no sea un enlace.
-  - **Si una comprobación falla**, o no hay una clave privada válida (ver «Clave privada del cifrado»), el límite queda desactivado (fallo abierto) y el log tiene una línea `CFW:` en cada intento de login o de guardado en `cuenta` con la contraseña actual. Una ruta absoluta configurada que no cumple no vuelve a `cfw/data/intentos`: por ejemplo, `intentos.carpeta = "/tmp/algo"` deja el límite desactivado. Los contadores que son enlaces, enlaces duros o no son archivos normales se rechazan, sin escribir en ellos.
+  - **Si una comprobación falla**, o no hay una clave privada válida (ver «Clave privada del cifrado»), el límite queda desactivado (fallo abierto) y el log tiene una línea `CFW:` en cada intento de login o de guardado en `cuenta` con la contraseña actual. Una ruta absoluta configurada que no cumple no vuelve a `cfw/data/intentos`: por ejemplo, `intentos.carpeta = "/tmp/algo"` deja el límite desactivado. Los contadores que son enlaces, enlaces duros o no son archivos normales se rechazan, sin escribir en ellos; se borran cuando un login o una contraseña actual correctos limpian ese contador, sin tocar el destino de un enlace (una carpeta no se borra). La limpieza de los contadores caducados solo borra archivos normales con nombre de contador, no sigue enlaces y se detiene si la carpeta cambia mientras tanto.
   - **Creación:** la carpeta se crea sola, en 0700, si existe la carpeta que la contiene y Apache puede escribir en ella. Si no (por ejemplo, con `cfw/data` en 555), créala a mano, siempre como Apache (con `intentos.carpeta`, usa esa ruta):
     ```
     sudo -u www-data mkdir -m 700 cfw/data/intentos
@@ -168,7 +168,7 @@ Para un sitio creado como en «Crear un sitio». Hazlo con el árbol de trabajo 
    ```
    git merge 2.0.0
    ```
-4. Resuelve los conflictos. Suelen salir en los archivos que el sitio adapta (el `.htaccess` raíz, `db.sql`, `css/`, `js/` e `img/`, y los `.md` de CFW si el sitio los cambió): conserva lo propio del sitio y añade lo nuevo de CFW. Revisa esos archivos aunque no tengan conflictos, con «Archivos que revisar a mano» de cada versión en [MIGRACION.md](MIGRACION.md). Si CFW borra un fichero que el sitio cambió, como los `main.ini` de `cfw/specific/lang/` en 2.0.0, git da un conflicto «modify/delete»: consérvalo con `git add` o bórralo con `git rm`, según diga [MIGRACION.md](MIGRACION.md) para esa versión. La configuración no debería dar conflictos, porque el sitio no toca `cfw/config.ini`: las opciones nuevas que quieras cambiar van en `cfw/specific/config.ini` o, si son del servidor, en `cfw/data/config.ini`.
+4. Resuelve los conflictos. Suelen salir en los archivos que el sitio adapta (el `.htaccess` raíz, `db.sql`, `css/`, `js/` e `img/`, y los `.md` de CFW si el sitio los cambió): conserva lo propio del sitio y añade lo nuevo de CFW. Revisa esos archivos aunque no tengan conflictos, con «Archivos que revisar a mano» de cada versión en [MIGRACION.md](MIGRACION.md). Si CFW borra un fichero que el sitio cambió, como los `main.ini` de `cfw/specific/lang/` en 2.0.0, git da un conflicto «modify/delete»: consérvalo con `git add` o bórralo con `git rm`, según diga [MIGRACION.md](MIGRACION.md) para esa versión. La configuración no debería dar conflictos, porque el sitio no toca `cfw/config.ini`: las opciones nuevas que quieras cambiar van en `cfw/specific/config.ini` o, si son del servidor, en `cfw/servidor.ini`.
 5. Aplica los apartados de [MIGRACION.md](MIGRACION.md) de las versiones intermedias: los de todas las posteriores a la del sitio, hasta la nueva incluida, empezando por la más antigua. Incluyen las copias de `cfw/general/` que el sitio tenga en `cfw/specific/`, que no se actualizan solas.
 6. Despliega como siempre (ver «Despliegue»).
 

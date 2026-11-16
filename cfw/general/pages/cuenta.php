@@ -66,6 +66,8 @@ class cuenta extends Page{
 							$tplaux->vars["color"] = "Green";
 							$tplaux->vars["text"] = t("text_cuenta_ok");
 							$tpl->vars["email"] = escapar($_POST["email"]);
+						}elseif(in_array(t("text_error_usuario_mail"),$ormuser->errores,true)){
+							$tplaux->vars["text"] = t("text_error_usuario_mail");
 						}else{
 							$tplaux->vars["text"] = t("text_problema_reintentar");
 						}

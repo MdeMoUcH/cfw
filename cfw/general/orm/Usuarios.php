@@ -96,7 +96,7 @@ class Usuarios extends Orm
 			return false;
 		}
 
-		//Sin UNIQUE en email: se prueban todas las filas.
+		//Un sitio que aún no haya resuelto sus emails duplicados puede tener varias filas: se prueban todas.
 		foreach($a_filas as $a_fila){
 			$s_guardado = (string)$a_fila["pass"];
 			$b_md5 = preg_match('/^[0-9a-f]{32}$/iD', $s_guardado) === 1;
@@ -127,16 +127,17 @@ class Usuarios extends Orm
 	
 	
 	function insert($a_array, $tabla = ''){
-		$s_sql = "SELECT * FROM ".$this->tabla." WHERE email = '".$this->filtro(@$a_array["email"])."' AND borrado = 0 AND (pass IS NOT NULL AND pass <> '');";
+		//Todas las filas, borradas incluidas: el UNIQUE de email también las cuenta.
+		$s_sql = "SELECT id FROM ".$this->tabla." WHERE email = '".$this->filtro(@$a_array["email"])."'";
 		
 		$i_errores = count($this->errores);
 		$this->ejecutarConsulta($s_sql);
-		//Sin poder comprobar el email no se escribe: la tabla no tiene UNIQUE.
+		//Sin poder comprobar el email no se escribe: un sitio sin el UNIQUE no tendría otra protección.
 		if(count($this->errores) > $i_errores){
 			return false;
 		}
 		
-		if(isset($this->resultado[0]['email'])){
+		if(isset($this->resultado[0]['id'])){
 			$this->errores[] = t('text_error_usuario_mail');
 			return false;
 		}else{
@@ -144,27 +145,42 @@ class Usuarios extends Orm
 			if(!isset($a_array["fk_idioma"])){
 				$a_array["fk_idioma"] = GestorIdiomas::porDefecto();
 			}
-			return parent::insert($a_array);
+			return $this->emailRepetido(parent::insert($a_array));
 		}
 	}
 	
 	function update($a_datos, $id = ""){
 		$id_efectivo = ($id != "") ? $id : @$a_datos["id"];
 		if(@$a_datos["email"] != ""){
-			$s_sql = "SELECT * FROM ".$this->tabla." WHERE email = '".$this->filtro($a_datos["email"])."' AND borrado = 0";
+			$s_sql = "SELECT id FROM ".$this->tabla." WHERE email = '".$this->filtro($a_datos["email"])."'";
 			
 			$i_errores = count($this->errores);
 			if($this->ejecutarConsulta($s_sql)){
-				if($this->resultado[0]["id"] != $id_efectivo){
-					$this->errores[] = t('text_error_usuario_mail');
-					return false;
+				//Cualquier otra fila con ese email, borrada o no, lo hace repetido.
+				foreach($this->resultado as $a_fila){
+					if($a_fila["id"] != $id_efectivo){
+						$this->errores[] = t('text_error_usuario_mail');
+						return false;
+					}
 				}
 			}elseif(count($this->errores) > $i_errores){
 				return false;
 			}
 		}
 		
-		return parent::update($this->normalizarIdioma($a_datos), $id);
+		return $this->emailRepetido(parent::update($this->normalizarIdioma($a_datos), $id));
+	}
+	
+	
+	//Si el UNIQUE de email rechaza la escritura (otra petición se adelantó), se avisa igual que en la comprobación previa.
+	protected function emailRepetido($b_ok){
+		if(!$b_ok && $this->conexion && mysqli_errno($this->conexion) === 1062
+			&& preg_match("/ for key '(?:[^']*\\.)?email'$/", mysqli_error($this->conexion)) === 1
+			&& end($this->errores) === t("text_bd_escritura")){
+			array_pop($this->errores);
+			$this->errores[] = t('text_error_usuario_mail');
+		}
+		return $b_ok;
 	}
 	
 	

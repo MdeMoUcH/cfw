@@ -3,7 +3,7 @@ Reglas y trampas para construir o cambiar un sitio hecho con CFW. Para saber qu�
 
 ## Dónde va cada cosa
 - Un sitio no cambia `cfw/general/`, `cfw/includes.php`, `cfw/index.php`, `index.php` ni `cfw/config.ini`: son de CFW. Al actualizar, `git merge` fusiona los cambios de CFW con los del sitio, y cada cambio del sitio en esos ficheros acaba en un conflicto (ver «Actualizar un sitio» en [INSTALACION.md](INSTALACION.md)).
-- Lo propio va en `cfw/specific/`, que CFW trae solo con los `index.php` de protección: lo que el sitio cree ahí no choca con CFW al actualizar. La configuración del sitio va en `cfw/specific/config.ini`, y la de cada servidor en `cfw/data/config.ini` (ver «Configuración»).
+- Lo propio va en `cfw/specific/`, que CFW trae solo con los `index.php` de protección: lo que el sitio cree ahí no choca con CFW al actualizar. La configuración del sitio va en `cfw/specific/config.ini`, y la de cada servidor en `cfw/servidor.ini` (ver «Configuración»).
 - El sitio adapta también ficheros fuera de `specific`, que sí pueden dar conflictos: el `.htaccess` raíz, `db.sql`, `css/`, `js/` e `img/` (ver «Qué queda fuera de `specific`» en [README.md](README.md)).
 - Cada carpeta de `specific` actúa de una forma (ver «Qué se puede redefinir en `specific`» en [README.md](README.md)):
   - `pages/` y `templates/`: un fichero con la misma ruta que uno de `general` lo sustituye entero; uno nuevo se añade.
@@ -65,7 +65,7 @@ Reglas y trampas para construir o cambiar un sitio hecho con CFW. Para saber qu�
 - Un modelo es una clase en `cfw/specific/orm/` que hereda de `Orm` y, en su constructor, después de `parent::__construct()`, define `tabla`, `campos` y, si se va a usar con `AdminHelper`, `campos_form`. `includes.php` no la carga: la página que la use hace `require_once` de su ruta.
 - `campos` es un array `columna => tipo`, del que solo cuentan las claves: es la lista blanca de columnas que escriben `insert` y `update`, que descartan las demás. Aun así, no les pases `$_POST` entero si la tabla tiene columnas que el formulario no debe tocar, como un tipo de usuario: pasa un array con lo que toca, como `cuenta` con el email.
 - Columnas que el `Orm` da por hechas:
-  - `id`, numérico y `AUTO_INCREMENT`: casi todos los métodos filtran por la columna `id`, también `update` y `delete`. `primarykey` solo la usan `eliminarFila` y `updateField`, y `update` para no escribirla. Usa `id` como clave primaria. Sin `AUTO_INCREMENT`, un alta de `AdminHelper` por POST a `form/save/<id>` toma ese id, y la subida escribe su nombre en esa fila, aunque sea otra.
+  - `id`, numérico y `AUTO_INCREMENT`: casi todos los métodos filtran por la columna `id`, también `update` y `delete`. `primarykey` solo la usan `eliminarFila` y `updateField`, y `update` para no escribirla. Usa `id` como clave primaria. Sin `AUTO_INCREMENT`, un alta de `AdminHelper` crea la fila, pero no guarda sus subidas ni sus categorías: avisa en rojo y deja una línea `CFW:` en el log. Nunca usa el id de la URL.
   - `borrado`, en casi todas las lecturas, y `activo`, en las que buscan filas activas (`getActivoById`, `getAllActivo`, `getBySlug`, `getByFkId`, `getUltimos`, `buscar`...).
   - `slug` en `getBySlug` y `getByCat`; `nombre` en `buscar` (con `contenido`), `getAllActivoOrdenAZ`, `getByCat` y `getCategoriasByFkId`; `fecha` en `getUltimos`; y `fecha_creacion` y `fk_id_usuario` en `getLastByUser`.
   - `name` lo usan `AdminHelper`, para la etiqueta del listado (`nombre`, si está vacío `name` y si no `email`) y las opciones de `select_dinamico`, y `Form`, para las de `select_dinamico` y `checkbox_dinamico`.
@@ -94,10 +94,10 @@ Reglas y trampas para construir o cambiar un sitio hecho con CFW. Para saber qu�
 - `ver/<id>` pinta las columnas de la fila sin escapar: vale para lo guardado con `filtro()`, no para datos escritos por otra vía.
 - Subidas, con los campos `img` y `file`:
   - El campo debe estar en `campos`. El archivo se guarda con el id de la fila como nombre, más su extensión, y ese nombre se escribe en la columna.
-  - La carpeta sale de la configuración fusionada, normalmente de `cfw/data/config.ini` (ver «Carpeta `cfw/data` y permisos» en [INSTALACION.md](INSTALACION.md)): `<config_name>.img.path` para las imágenes y `<config_name>.path` para los demás archivos, con la barra final, que aquí no se añade sola. Las imágenes necesitan además `<config_name>.img.width` y `<config_name>.img.height`: se reducen o amplían a ese ancho, sin pasar de ese alto.
+  - La carpeta sale de la configuración fusionada, normalmente de `cfw/servidor.ini` (ver «Carpeta `cfw/data` y permisos» en [INSTALACION.md](INSTALACION.md)): `<config_name>.img.path` para las imágenes y `<config_name>.path` para los demás archivos, con la barra final, que aquí no se añade sola. Las imágenes necesitan además `<config_name>.img.width` y `<config_name>.img.height`: se reducen o amplían a ese ancho, sin pasar de ese alto.
   - Si es una imagen lo decide el contenido: un GIF, JPEG o PNG se guarda como imagen, con la extensión de su tipo real. Se rechaza si pasa de `img_max_pixeles` o falta la extensión GD.
-  - En los demás archivos, la extensión depende del MIME que declara el cliente, no del contenido: `application/octet-stream` y `text/html` dan `tpl`, `text/css` da `css`, y cualquier otro se rechaza. Además, la extensión debe estar en `extensiones_permitidas` (por defecto, `tpl` y `css`), así que añadir otra ahí no sirve en estas subidas. Un contenido con `<?` se rechaza.
-  - En el alta, una subida fallida deshace el alta con `eliminarFila()`. En la edición, los datos ya quedan guardados.
+  - En los demás archivos, la extensión la decide el contenido, nunca el MIME ni el nombre que envía el cliente. Debe ser texto UTF-8 sin bytes nulos: con alguna etiqueta (`<` seguido de una letra, `/` o `!`) es `tpl`; sin etiquetas y con al menos una regla `selector { propiedad: valor }`, `css` (sin contar los comentarios `/* */`, y la propiedad puede ser personalizada, como `--color`); lo demás se rechaza. Un CSS con algo que parezca una etiqueta, aunque sea en un comentario, se guarda como `tpl`, y un `.tpl` sin etiquetas o un CSS en Latin-1 con acentos se rechazan. Además, la extensión debe estar en `extensiones_permitidas` (por defecto, `tpl` y `css`), así que añadir otra ahí no sirve en estas subidas. Un contenido con `<?` se rechaza.
+  - En el alta, una subida fallida deshace el alta con `eliminarFila()`. Si la tabla no devuelve el id del alta (sin `AUTO_INCREMENT`), no se guardan las subidas ni las categorías y se avisa con `text_alta_sin_id`. En la edición, los datos ya quedan guardados. Un campo vacío no cuenta como enviado, tampoco uno múltiple (`name[]`) sin ningún archivo.
 - `titulo` y `singular` no se traducen solos: dales valor con `t()` en el constructor.
 
 ## Sesión y contraseñas
@@ -107,14 +107,14 @@ Reglas y trampas para construir o cambiar un sitio hecho con CFW. Para saber qu�
   - Al pintar el formulario, campo `password_cifrado` en `Form` (o `data-cifrar="<campo>"`, sin `name`, en una plantilla propia) y `prepararCifrado()`, que devuelve el aviso que se pinta junto al formulario.
   - Al recibirlo, `leerPassCifradas(array("<campo>", ...))`, que devuelve `campo => contraseña`, con `""` en los vacíos, o `false`. Con `false`, el mensaje es `textoFalloCifrado()`.
   - Se guarda con `pass_hash()`, que devuelve `false` si `pass_valida()` la rechaza (vacía, con un carácter nulo o de más de 72 bytes). `pass_valida()` solo dice si una contraseña nueva se puede guardar: el login la comprueba con `password_verify`, en `Usuarios::comprobarUserPass`.
-- Lo que se pueda probar por fuerza bruta usa `intentos_bloqueado($clave)`, `intentos_fallo($clave)` e `intentos_limpiar($clave)`. Cuentan por clave e IP; con `false` como segundo argumento, solo por clave, como `cuenta`. Sin una clave privada válida o sin una carpeta de contadores utilizable no cuentan nada, ni bloquean: solo dejan una línea `CFW:` en el log.
+- Lo que se pueda probar por fuerza bruta usa `intentos_bloqueado($clave)`, `intentos_fallo($clave)` e `intentos_limpiar($clave)`. Cuentan por clave e IP; con `false` como segundo argumento, solo por clave, como `cuenta`. Sin una clave privada válida o sin una carpeta de contadores utilizable no cuentan nada, ni bloquean: solo dejan una línea `CFW:` en el log. `intentos_limpiar` borra lo que haya en lugar del contador (archivo, FIFO o enlace, nunca su destino), salvo una carpeta.
 
 ## Configuración
 - Hay tres capas, y cada una pisa a la anterior clave a clave:
   - `cfw/config.ini`: los valores por defecto de CFW. No se toca.
   - `cfw/specific/config.ini`: lo del sitio, versionado con él. Nada secreto.
-  - `cfw/data/config.ini`: lo de cada servidor, sin versionar: la base de datos, `urlbase`, `desarrollo`, las rutas de subida y lo que sea secreto. Los valores reales de producción solo van aquí.
-- Las claves propias del sitio llevan un prefijo propio y van en `cfw/specific/config.ini`, o en `cfw/data/config.ini` si dependen del servidor o son secretas.
+  - `cfw/servidor.ini`: lo de cada servidor, sin versionar y fuera de `cfw/data`, para que Apache solo pueda leerlo: la base de datos, `urlbase`, `desarrollo`, las rutas de subida y lo que sea secreto. Los valores reales de producción solo van aquí.
+- Las claves propias del sitio llevan un prefijo propio y van en `cfw/specific/config.ini`, o en `cfw/servidor.ini` si dependen del servidor o son secretas.
 - Se lee sin secciones: `$this->config["db.host"]`. Las secciones solo ordenan: la misma clave en dos secciones se pisa.
 - Las comillas siguen las reglas de `parse_ini_file`, distintas de las de los textos, y un fichero mal formado se ignora entero: ver el paso 3 de «Puesta en marcha» en [INSTALACION.md](INSTALACION.md).
 - `urlbase` y `pathbase` terminan en barra, que se añade si falta. Las URL y rutas se construyen con ellas, no a mano.

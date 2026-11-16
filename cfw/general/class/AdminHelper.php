@@ -165,15 +165,26 @@ class AdminHelper extends Page implements PaginaAdmin{
 		
 		if($save != "" && @$_SERVER["REQUEST_METHOD"] === "POST"){
 			if($orm->insert($_POST)){
-				$id_aux = mysqli_insert_id($orm->conexion);
-				if($id_aux){
-					$id = $id_aux;
-				}
+				$id_aux = (int)mysqli_insert_id($orm->conexion);
 				
 				$tplmsg->vars["text"] = "";
 				$this->a_subidas_guardadas = array();
+				$s_aviso = "";
 				
-				if($this->guardarSubidas($orm,$id,$tplmsg)){
+				if($id_aux <= 0){
+					//Sin id propio no hay fila a la que asociar subidas ni categorías: el id de la URL es de otra.
+					$id = "";
+					error_log("CFW: alta en ".$orm->tabla." sin id de AUTO_INCREMENT; no se guardan subidas ni categorías");
+					$tplmsg->vars["color"] = "Green";
+					$tplmsg->vars["text"] = t("text_elemento_insertado",array("elemento" => $this->singular));
+					if($this->hayAsociados()){
+						$tplaviso = new Template("html/p_color");
+						$tplaviso->vars["color"] = "Red";
+						$tplaviso->vars["text"] = t("text_alta_sin_id");
+						$s_aviso = $tplaviso->get();
+					}
+				}elseif($this->guardarSubidas($orm,$id_aux,$tplmsg)){
+					$id = $id_aux;
 					$tplmsg->vars["color"] = "Green";
 					$tplmsg->vars["text"] = t("text_elemento_insertado",array("elemento" => $this->singular));
 					
@@ -186,7 +197,7 @@ class AdminHelper extends Page implements PaginaAdmin{
 					$id = "";
 				}
 				
-				$s_msg = $tplmsg->get();
+				$s_msg = $tplmsg->get().$s_aviso;
 			}else{
 				$b_insert_error = true;
 				$tplmsg->vars["text"] = "";
@@ -478,7 +489,7 @@ class AdminHelper extends Page implements PaginaAdmin{
 	protected function guardarSubidas($orm,$id,$tplmsg){
 		$b_todo_ok = true;
 		foreach($_FILES as $name=>$file){
-			if($file["error"] === UPLOAD_ERR_NO_FILE){
+			if(!$this->archivoEnviado($file)){
 				continue;
 			}
 			$b_ok = false;
@@ -508,6 +519,30 @@ class AdminHelper extends Page implements PaginaAdmin{
 			}
 		}//foreach
 		return $b_todo_ok;
+	}
+	
+	
+	//Archivos o categorías enviados en el alta.
+	protected function hayAsociados(){
+		foreach($_FILES as $file){
+			if($this->archivoEnviado($file)){
+				return true;
+			}
+		}
+		return @$this->categorias && isset($_POST["categorias"]);
+	}
+	
+	
+	//Un campo múltiple (name[]) trae error como array: vacío si todos son UPLOAD_ERR_NO_FILE.
+	protected function archivoEnviado($file){
+		$a_errores = (array)@$file["error"];
+		$b_enviado = false;
+		array_walk_recursive($a_errores,function($error) use (&$b_enviado){
+			if($error !== UPLOAD_ERR_NO_FILE){
+				$b_enviado = true;
+			}
+		});
+		return $b_enviado;
 	}
 	
 	
@@ -707,35 +742,25 @@ class AdminHelper extends Page implements PaginaAdmin{
 		if($s_nombre == "")
 		{
 			$s_nombre = $file_data["name"];
-			$s_ext = strtolower(pathinfo(basename($s_nombre),PATHINFO_EXTENSION));
-		}//if
-		elseif($file_data["type"] == "application/octet-stream" || $file_data["type"] == "text/html")
-		{
-			$s_ext = "tpl";
-		}//elseif
-		elseif($file_data["type"] == "text/css")
-		{
-			$s_ext = "css";
-		}//elseif
-		else
-		{
-			$s_ext = "";
-		}//else
-		
-		if(!in_array($s_ext,$this->extensiones_permitidas))
-		{
-			$this->s_error_subida = t("text_subida_tipo");
-			return false;
 		}//if
 		
 		//Con una ruta vacía, file_get_contents lanza ValueError y @ no lo silencia.
-		if(!is_string($file_data["tmp_name"]) || $file_data["tmp_name"] == "")
+		$s_contenido = (is_string($file_data["tmp_name"]) && $file_data["tmp_name"] != "") ? @file_get_contents($file_data["tmp_name"]) : false;
+		if($s_contenido === false)
 		{
 			$this->s_error_subida = t("text_subida_no_recibido");
 			return false;
 		}//if
 		
-		if(strpos((string)@file_get_contents($file_data["tmp_name"]),"<?") !== false)
+		//El MIME y la extensión del nombre los elige el cliente: la extensión sale del contenido.
+		$s_ext = $this->extensionPorContenido($s_contenido);
+		if(!in_array($s_ext,$this->extensiones_permitidas,true))
+		{
+			$this->s_error_subida = t("text_subida_tipo");
+			return false;
+		}//if
+		
+		if(strpos($s_contenido,"<?") !== false)
 		{
 			$this->s_error_subida = t("text_subida_contenido");
 			return false;
@@ -751,7 +776,8 @@ class AdminHelper extends Page implements PaginaAdmin{
 		}//if
 		
 		$s_nombre .= ".".$s_ext;
-		if(!@copy($file_data["tmp_name"],$s_ruta.$s_nombre))
+		//Se escribe lo que se comprobó, sin volver a leer el temporal.
+		if(@file_put_contents($s_ruta.$s_nombre,$s_contenido) !== strlen($s_contenido))
 		{
 			error_log("CFW: no se pudo escribir ".$s_ruta.$s_nombre);
 			$this->s_error_subida = t("text_subida_guardar");
@@ -761,6 +787,35 @@ class AdminHelper extends Page implements PaginaAdmin{
 		$this->last_file_name = $s_nombre;
 		$this->a_subidas_guardadas[] = $s_ruta.$s_nombre;
 		return true;
+	}//fun
+	
+	
+	//tpl si tiene alguna etiqueta; css si no la tiene y sí una regla «selector { propiedad: valor }», sin contar los comentarios. Solo texto UTF-8.
+	protected function extensionPorContenido($s_contenido)
+	{
+		if(strpos($s_contenido,"\0") !== false || preg_match('//u',$s_contenido) !== 1)
+		{
+			return "";
+		}//if
+		if(preg_match('/<[a-z\/!]/i',$s_contenido) === 1)
+		{
+			return "tpl";
+		}//if
+		//Sin regex: con /\*.*?\*/ un comentario sin cerrar daría coste cuadrático.
+		$s_css = "";
+		$i_pos = 0;
+		while(($i_ini = strpos($s_contenido,"/*",$i_pos)) !== false)
+		{
+			$s_css .= substr($s_contenido,$i_pos,$i_ini - $i_pos)." ";
+			$i_fin = strpos($s_contenido,"*/",$i_ini + 2);
+			$i_pos = $i_fin === false ? strlen($s_contenido) : $i_fin + 2;
+		}//while
+		$s_css .= substr($s_contenido,$i_pos);
+		if(preg_match('/[^\s{};]\s*\{\s*(?:--[-a-z0-9_]+|-?[a-z][-a-z0-9]*)\s*:\s*[^\s;{}]/i',$s_css) === 1)
+		{
+			return "css";
+		}//if
+		return "";
 	}//fun
 	
 	

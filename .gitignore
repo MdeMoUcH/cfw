@@ -1,4 +1,5 @@
 .magents/
 .claude/
+cfw/servidor.ini
 cfw/data/*
 !cfw/data/.htaccess

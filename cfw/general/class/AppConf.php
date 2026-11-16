@@ -22,13 +22,17 @@ class AppConf
 		
 		if(self::$a_config === null)
 		{
-			//Capas: CFW, sitio (specific) y servidor (data); cada una pisa a la anterior clave a clave.
+			//Capas: CFW, sitio (specific) y servidor (servidor.ini, fuera de data, donde escribe Apache); cada una pisa a la anterior clave a clave.
 			$s_base = dirname(__DIR__, 2)."/";
 			$a_config = self::leerIni($s_base."config.ini", true);
-			foreach(Array("specific/config.ini", "data/config.ini") as $s_fichero)
+			foreach(Array("specific/config.ini", "servidor.ini") as $s_fichero)
 			{
 				$a_config = array_replace($a_config, self::leerIni($s_base.$s_fichero, false));
 			}//foreach
+			if(file_exists($s_base."data/config.ini") || is_link($s_base."data/config.ini"))
+			{
+				error_log("CFW: ".$s_base."data/config.ini ya no se lee; su contenido va en cfw/servidor.ini");
+			}//if
 			
 			if(!isset($a_config["pathbase"]) || !is_string($a_config["pathbase"]) || trim($a_config["pathbase"]) === "")
 			{
