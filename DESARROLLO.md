@@ -2,9 +2,9 @@
 Reglas y trampas para construir o cambiar un sitio hecho con CFW. Para saber qué es y cómo enruta, ver [README.md](README.md); para instalarlo y configurarlo, [INSTALACION.md](INSTALACION.md); para actualizar un sitio, [MIGRACION.md](MIGRACION.md). Si este documento y el código no coinciden, manda el código.
 
 ## Dónde va cada cosa
-- Un sitio no cambia `cfw/general/`, `cfw/includes.php`, `cfw/index.php`, `index.php` ni `cfw/config.ini`: son de CFW. Al actualizar, `git merge` fusiona los cambios de CFW con los del sitio, y cada cambio del sitio en esos ficheros acaba en un conflicto (ver «Actualizar un sitio» en [INSTALACION.md](INSTALACION.md)).
-- Lo propio va en `cfw/specific/`, que CFW trae solo con los `index.php` de protección: lo que el sitio cree ahí no choca con CFW al actualizar. La configuración del sitio va en `cfw/specific/config.ini`, y la de cada servidor en `cfw/servidor.ini` (ver «Configuración»).
-- El sitio adapta también ficheros fuera de `specific`, que sí pueden dar conflictos: el `.htaccess` raíz, `db.sql`, `css/`, `js/` e `img/` (ver «Qué queda fuera de `specific`» en [README.md](README.md)).
+- Un sitio no cambia `cfw/general/`, `cfw/includes.php`, `cfw/index.php` ni `index.php`: son de CFW. Al actualizar, `git merge` fusiona los cambios de CFW con los del sitio, y cada cambio del sitio en esos ficheros acaba en un conflicto (ver «Actualizar un sitio» en [INSTALACION.md](INSTALACION.md)).
+- Lo propio va en `cfw/specific/`, que CFW trae solo con los `index.php` de protección: lo que el sitio cree ahí no choca con CFW al actualizar. La configuración no va aquí, sino en `config/` (ver «Configuración»).
+- El sitio adapta también ficheros fuera de `specific`, que sí pueden dar conflictos: `config/config.ini`, el `.htaccess` raíz, `db.sql`, `css/`, `js/` e `img/` (ver «Qué queda fuera de `specific`» en [README.md](README.md)).
 - Cada carpeta de `specific` actúa de una forma (ver «Qué se puede redefinir en `specific`» en [README.md](README.md)):
   - `pages/` y `templates/`: un fichero con la misma ruta que uno de `general` lo sustituye entero; uno nuevo se añade.
   - `class/` y `orm/`: sustituyen el fichero entero, pero solo los de la lista fija de `cfw/includes.php` (las clases de `cfw/general/class/` y los ORM `Usuarios` y `DinamicOrm`). Una clase o un ORM nuevos no se cargan solos: la página que los use hace `require_once` de su ruta.
@@ -94,7 +94,7 @@ Reglas y trampas para construir o cambiar un sitio hecho con CFW. Para saber qu�
 - `ver/<id>` pinta las columnas de la fila sin escapar: vale para lo guardado con `filtro()`, no para datos escritos por otra vía.
 - Subidas, con los campos `img` y `file`:
   - El campo debe estar en `campos`. El archivo se guarda con el id de la fila como nombre, más su extensión, y ese nombre se escribe en la columna.
-  - La carpeta sale de la configuración fusionada, normalmente de `cfw/servidor.ini` (ver «Carpeta `cfw/data` y permisos» en [INSTALACION.md](INSTALACION.md)): `<config_name>.img.path` para las imágenes y `<config_name>.path` para los demás archivos, con la barra final, que aquí no se añade sola. Las imágenes necesitan además `<config_name>.img.width` y `<config_name>.img.height`: se reducen o amplían a ese ancho, sin pasar de ese alto.
+  - La carpeta sale de la configuración fusionada, normalmente de `config/config-servidor.ini` (ver «Carpeta `data` y permisos» en [INSTALACION.md](INSTALACION.md)): `<config_name>.img.path` para las imágenes y `<config_name>.path` para los demás archivos, con la barra final, que aquí no se añade sola. Las imágenes necesitan además `<config_name>.img.width` y `<config_name>.img.height`: se reducen o amplían a ese ancho, sin pasar de ese alto.
   - Si es una imagen lo decide el contenido: un GIF, JPEG o PNG se guarda como imagen, con la extensión de su tipo real. Se rechaza si pasa de `img_max_pixeles` o falta la extensión GD.
   - En los demás archivos, la extensión la decide el contenido, nunca el MIME ni el nombre que envía el cliente. Debe ser texto UTF-8 sin bytes nulos: con alguna etiqueta (`<` seguido de una letra, `/` o `!`) es `tpl`; sin etiquetas y con al menos una regla `selector { propiedad: valor }`, `css` (sin contar los comentarios `/* */`, y la propiedad puede ser personalizada, como `--color`); lo demás se rechaza. Un CSS con algo que parezca una etiqueta, aunque sea en un comentario, se guarda como `tpl`, y un `.tpl` sin etiquetas o un CSS en Latin-1 con acentos se rechazan. Además, la extensión debe estar en `extensiones_permitidas` (por defecto, `tpl` y `css`), así que añadir otra ahí no sirve en estas subidas. Un contenido con `<?` se rechaza.
   - En el alta, una subida fallida deshace el alta con `eliminarFila()`. Si la tabla no devuelve el id del alta (sin `AUTO_INCREMENT`), no se guardan las subidas ni las categorías y se avisa con `text_alta_sin_id`. En la edición, los datos ya quedan guardados. Un campo vacío no cuenta como enviado, tampoco uno múltiple (`name[]`) sin ningún archivo.
@@ -110,11 +110,12 @@ Reglas y trampas para construir o cambiar un sitio hecho con CFW. Para saber qu�
 - Lo que se pueda probar por fuerza bruta usa `intentos_bloqueado($clave)`, `intentos_fallo($clave)` e `intentos_limpiar($clave)`. Cuentan por clave e IP; con `false` como segundo argumento, solo por clave, como `cuenta`. Sin una clave privada válida o sin una carpeta de contadores utilizable no cuentan nada, ni bloquean: solo dejan una línea `CFW:` en el log. `intentos_limpiar` borra lo que haya en lugar del contador (archivo, FIFO o enlace, nunca su destino), salvo una carpeta.
 
 ## Configuración
-- Hay tres capas, y cada una pisa a la anterior clave a clave:
-  - `cfw/config.ini`: los valores por defecto de CFW. No se toca.
-  - `cfw/specific/config.ini`: lo del sitio, versionado con él. Nada secreto.
-  - `cfw/servidor.ini`: lo de cada servidor, sin versionar y fuera de `cfw/data`, para que Apache solo pueda leerlo: la base de datos, `urlbase`, `desarrollo`, las rutas de subida y lo que sea secreto. Los valores reales de producción solo van aquí.
-- Las claves propias del sitio llevan un prefijo propio y van en `cfw/specific/config.ini`, o en `cfw/servidor.ini` si dependen del servidor o son secretas.
+- Hay dos archivos en `config/`, en la raíz, donde Apache solo lee, y el segundo pisa al primero clave a clave:
+  - `config/config.ini`: lo que es igual en todos los servidores, de CFW y del sitio. Lo edita el sitio y se versiona. Nada secreto.
+  - `config/config-servidor.ini`: lo de cada servidor, opcional y sin versionar: la base de datos, `urlbase`, `desarrollo`, las rutas de subida y lo que sea secreto. Los valores reales de producción solo van aquí.
+- Lo que escribe la web va en `data/`, también en la raíz, nunca en `config/`.
+- Las claves de CFW que falten en los dos toman un valor por defecto del código (`AppConf`); las que no lo tienen (`urlbase`, `email` y `db.*`) quedan vacías con un aviso en el log. Una clave nueva de CFW que se lee con `$this->config[...]` necesita un valor por defecto en `AppConf` o un aviso, y figurar en el apartado de su versión en [MIGRACION.md](MIGRACION.md).
+- Las claves propias del sitio llevan un prefijo propio y van en `config/config.ini`, o en `config/config-servidor.ini` si dependen del servidor o son secretas.
 - Se lee sin secciones: `$this->config["db.host"]`. Las secciones solo ordenan: la misma clave en dos secciones se pisa.
 - Las comillas siguen las reglas de `parse_ini_file`, distintas de las de los textos, y un fichero mal formado se ignora entero: ver el paso 3 de «Puesta en marcha» en [INSTALACION.md](INSTALACION.md).
 - `urlbase` y `pathbase` terminan en barra, que se añade si falta. Las URL y rutas se construyen con ellas, no a mano.
@@ -134,5 +135,6 @@ Reglas y trampas para construir o cambiar un sitio hecho con CFW. Para saber qu�
 - Escribir un `"` en un `.ini` de idioma, que lo invalida entero, o un `;` en un valor sin comillas.
 - Crear un ORM o una clase en `specific` y no hacer el `require_once`.
 - Definir en `specific/utils/functions.php` una función que ya existe en `general`: error fatal.
-- Cambiar `cfw/general/` o `cfw/config.ini` en el sitio: cada cambio choca con los de CFW al actualizar.
+- Cambiar `cfw/general/` en el sitio: cada cambio choca con los de CFW al actualizar.
+- Olvidar al actualizar CFW las claves nuevas de `config/config.ini` que lista [MIGRACION.md](MIGRACION.md).
 - Copiar a `specific` un fichero de `general` para un cambio pequeño y olvidarlo en la siguiente actualización.

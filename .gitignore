@@ -1,5 +1,8 @@
 .magents/
 .claude/
+config/config-servidor.ini
+data/*
+!data/.htaccess
+#Ubicaciones de versiones de desarrollo de 2.0.0: que no se versionen por error.
 cfw/servidor.ini
-cfw/data/*
-!cfw/data/.htaccess
+cfw/data/

@@ -153,7 +153,7 @@ function getIP(){
 define("CFW_INTENTOS_MAX", 5);
 define("CFW_INTENTOS_VENTANA", 900);
 
-//intentos.carpeta de config.ini, si es absoluta; si no, cfw/data/intentos. "" si no es segura (fallo abierto).
+//intentos.carpeta de la configuración, si es absoluta; si no, data/intentos en la raíz. "" si no es segura (fallo abierto).
 //Se comprueba una vez por petición.
 function intentos_carpeta()
 {
@@ -165,7 +165,7 @@ function intentos_carpeta()
 	
 	$s_carpeta = "";
 	$b_unix = PHP_OS_FAMILY !== "Windows";
-	$s_defecto = dirname(__DIR__, 2)."/data/intentos";
+	$s_defecto = dirname(__DIR__, 3)."/data/intentos";
 	$s_dir = $s_defecto;
 	
 	$app = new AppConf();

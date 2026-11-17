@@ -15,7 +15,7 @@ Las piezas MVC son:
 - **Vista:** las plantillas `.tpl` de `templates/`, con `Template`. Cómo se rellenan está en «Plantillas» de [DESARROLLO.md](DESARROLLO.md).
 
 ## Documentación
-- [INSTALACION.md](INSTALACION.md): requisitos, cómo crear un sitio desde una versión de CFW, puesta en marcha, protección de `cfw/` con `.htaccess`, permisos de `cfw/data`, clave privada del cifrado, despliegue y cómo actualizar un sitio a otra versión.
+- [INSTALACION.md](INSTALACION.md): requisitos, cómo crear un sitio desde una versión de CFW, puesta en marcha, protección de `cfw/`, `config/` y `data/` con `.htaccess`, permisos de `config/` y `data/`, clave privada del cifrado, despliegue y cómo actualizar un sitio a otra versión.
 - [MIGRACION.md](MIGRACION.md): regla de numeración y qué revisar al actualizar un sitio ya construido con CFW, con un apartado por versión.
 - [DESARROLLO.md](DESARROLLO.md): cómo se construye un sitio sobre CFW: dónde va cada cosa, páginas, plantillas, textos, datos, `AdminHelper`, sesión y contraseñas, configuración, estilo y trampas frecuentes.
 
@@ -45,21 +45,20 @@ El `.htaccess` raíz solo define las rutas `/admin/...` y `/login`, además de `
 | `templates/` | Sustituye a la plantilla con la misma ruta. |
 | `lang/<código>/` | Se fusiona clave a clave con los textos de `general`, con prioridad sobre ellos dentro del mismo idioma. |
 | `utils/functions.php` | Se carga además del de `general`. |
-| `config.ini` | Se fusiona clave a clave con `cfw/config.ini`, con prioridad sobre él. Encima de ambos va `cfw/servidor.ini`, el del servidor. |
 
 La sustitución es del fichero entero y no hay carga automática de clases nuevas: ver «Dónde va cada cosa» en [DESARROLLO.md](DESARROLLO.md).
 
 ## Qué queda fuera de `specific`
-Cada proyecto también adapta estos ficheros, que no están en `specific`: el `.htaccess` raíz, `db.sql`, `css/`, `js/` e `img/`. Al actualizar CFW en un proyecto hay que revisarlos a mano (ver [MIGRACION.md](MIGRACION.md)). `cfw/data/` guarda lo que escribe la aplicación; su contenido no se versiona, salvo su `.htaccess`. La configuración del servidor, `cfw/servidor.ini`, la escribe la persona, va fuera de `cfw/data` para que Apache solo pueda leerla y tampoco se versiona.
+Cada proyecto también adapta estos ficheros, que no están en `specific`: `config/config.ini`, el `.htaccess` raíz, `db.sql`, `css/`, `js/` e `img/`. Al actualizar CFW en un proyecto hay que revisarlos a mano (ver [MIGRACION.md](MIGRACION.md)). `data/`, en la raíz, guarda lo que escribe la aplicación; su contenido no se versiona, salvo su `.htaccess`. La configuración del servidor, `config/config-servidor.ini`, la escribe la persona, va en `config/`, donde Apache solo puede leer, y tampoco se versiona.
 
-La configuración va en tres capas, y cada una pisa a la anterior clave a clave: `cfw/config.ini` trae los valores por defecto de CFW y el sitio no lo toca; `cfw/specific/config.ini` es lo propio del sitio que no es secreto y se versiona con él; y `cfw/servidor.ini` es lo de cada servidor (base de datos, `urlbase`, `desarrollo`...), no se versiona y Apache solo lo lee. Ver «Puesta en marcha» en [INSTALACION.md](INSTALACION.md).
+La configuración va en dos archivos de `config/`, y el segundo pisa al primero clave a clave: `config/config.ini` lleva los valores de CFW y del sitio que son iguales en todos los servidores, lo edita el sitio y se versiona con él; y `config/config-servidor.ini` es lo de cada servidor y lo secreto (base de datos, `urlbase`, `desarrollo`...), es opcional, no se versiona y Apache solo lo lee. Las claves que falten en ambos toman un valor por defecto del código o, si no lo tienen, se avisan en el log. Ver «Puesta en marcha» en [INSTALACION.md](INSTALACION.md).
 
 ## Idiomas
 Los textos están en `cfw/general/lang/<código>/` (`textos.ini` y un `.ini` por plantilla). Los de `cfw/specific/lang/<código>/` tienen prioridad, clave a clave.
 
-La opción de multiidioma se gestiona en `/admin/idiomas` y se guarda en `cfw/data/idiomas.ini`, que no se versiona. Con ella activa, cada usuario elige su idioma en `cuenta` y los visitantes anónimos reciben el de `Accept-Language`, entre los activos. Si no, todo sale en `lang_default`, que siempre está activo.
+La opción de multiidioma se gestiona en `/admin/idiomas` y se guarda en `data/idiomas.ini`, que no se versiona. Con ella activa, cada usuario elige su idioma en `cuenta` y los visitantes anónimos reciben el de `Accept-Language`, entre los activos. Si no, todo sale en `lang_default`, que siempre está activo.
 
-Antes de usarla, Apache necesita permiso de escritura sobre `cfw/data/`: ver «Carpeta `cfw/data` y permisos» en [INSTALACION.md](INSTALACION.md).
+Antes de usarla, Apache necesita permiso de escritura sobre `data/`: ver «Carpeta `data` y permisos» en [INSTALACION.md](INSTALACION.md).
 
 Para añadir un idioma, crea `cfw/general/lang/<código>/textos.ini` (en un sitio, `cfw/specific/lang/<código>/textos.ini`), con un código de dos letras minúsculas y `nombre_idioma`; las claves que falten salen en `lang_default`. Si `lang_default` no tiene un `textos.ini` válido, se usa `es`. Cómo se escriben los textos está en «Textos» de [DESARROLLO.md](DESARROLLO.md).
 
@@ -93,7 +92,7 @@ Los md5 de versiones anteriores se convierten a `password_hash` en el primer log
 **Límites:**
 - Usa siempre HTTPS. El framework no lo fuerza, y el cifrado de las contraseñas no lo sustituye.
 - Las plantillas no escapan la salida (ver «Plantillas» en [DESARROLLO.md](DESARROLLO.md)).
-- Los textos de `lang` se pintan sin escapar: quien pueda escribir en `cfw/general/lang/` puede inyectar código en todo el sitio (ver «Carpeta `cfw/data` y permisos» en [INSTALACION.md](INSTALACION.md)).
+- Los textos de `lang` se pintan sin escapar: quien pueda escribir en `cfw/general/lang/` puede inyectar código en todo el sitio (ver «Carpeta `data` y permisos» en [INSTALACION.md](INSTALACION.md)).
 - Prototype 1.7.3 lleva el aviso CVE-2020-27511 (ReDoS en `stripTags` y `unescapeHTML`), sin parche: no pases datos de usuario a esas funciones.
 - El límite del login cuenta por IP y email: no frena a quien prueba un mismo email desde muchas IP, ni a quien prueba muchos emails desde una sola IP.
 - Quien robe una sesión puede bloquear `cuenta` de ese usuario durante 15 minutos desde el último fallo, fallando la contraseña actual. Detrás de un proxy todos los visitantes comparten `REMOTE_ADDR` y, por tanto, el contador del login: ver «Despliegue» en [INSTALACION.md](INSTALACION.md).
