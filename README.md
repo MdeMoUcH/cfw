@@ -33,7 +33,7 @@ Una petición se traduce en clase, método y hasta dos argumentos:
 
 Son accesibles por URL los métodos públicos de la página y de sus clases intermedias (como `AdminHelper`), no los de `AppConf`, `App` ni `Page`, ni los que se llaman como uno de `Page`, ni los estáticos ni los que empiezan por `__` (ver «Páginas» en [DESARROLLO.md](DESARROLLO.md)). Los POST exigen un token CSRF válido.
 
-El `.htaccess` raíz solo define las rutas `/admin/...` y `/login`, además de `/404/`, que pinta la página de error. Otra URL pública, como `/contacto`, necesita su propia regla en ese fichero o usar `index.php?uno=contacto`.
+El `.htaccess` raíz solo define las rutas `/admin/...`, `/login` y `/login/logout` (con o sin barra final), además de `/404/`, que pinta la página de error. Otra URL pública, como `/contacto`, necesita su propia regla anclada en ese fichero (`^contacto/?$`) o usar `index.php?uno=contacto`.
 
 ## Qué se puede redefinir en `specific`
 
@@ -104,6 +104,6 @@ Los md5 de versiones anteriores se convierten a `password_hash` en el primer log
 - El constructor de cualquier página se ejecuta antes de que `index.php` compruebe el token CSRF: una página no debe procesar POST en su constructor (ver «Páginas» en [DESARROLLO.md](DESARROLLO.md)).
 
 ## Librerías de terceros
-- El login usa jQuery 4.0.0 (`js/jquery-4.0.0.min.js`); los formularios con contraseña, node-forge 1.4.2 (`js/forge-1.4.2.min.js`) y `js/cifrado.js`; y el listado de `AdminHelper`, Prototype 1.7.3 (`js/prototype-1.7.3.js`) con TableKit 1.3b.
+- El login usa jQuery 4.0.0 (`js/jquery-4.0.0.min.js`); los formularios con contraseña, node-forge 1.4.2 (`js/forge-1.4.2.min.js`) y `js/cifrado.js`; y el listado de `AdminHelper`, Prototype 1.7.3 (`js/prototype-1.7.3.js`) con TableKit 1.3b y `js/tablekit-cfw.js`, que corrige su patrón de moneda sin modificar la librería.
 - node-forge 1.4.2 (`js/forge-1.4.2.min.js`): copia sin modificar de `dist/forge.min.js` del paquete npm `node-forge` 1.4.2 (repositorio `digitalbazaar/forge`), sha256 `52b553e747df79daa5056ff5e4dff37094c7d8a71194efe2b153d7c3f12763ff`. Licencia BSD-3-Clause o GPL-2.0, a elegir.
 - jQuery y Prototype no deben cargarse en la misma página.

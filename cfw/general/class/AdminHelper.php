@@ -85,7 +85,7 @@ class AdminHelper extends Page implements PaginaAdmin{
 				$aux_name = "elementos[]";
 				
 				$form = new Form();				
-				$tplelement->vars["input"] = $form->getInput($aux_name,"checkbox",$aux_id);
+				$tplelement->vars["input"] = $form->getInput($aux_name,"checkbox",$aux_id,"","",false,"","elemento_".$aux_id);
 				
 				$tpl->vars["content"] .= $tplelement->get();
 				$i++;
@@ -100,6 +100,7 @@ class AdminHelper extends Page implements PaginaAdmin{
 			
 			$this->add_include("js",$this->config["urlbase"]."js/prototype-1.7.3.js");
 			$this->add_include("js",$this->config["urlbase"]."js/tablekit.js");
+			$this->add_include("js",$this->config["urlbase"]."js/tablekit-cfw.js");
 		}else{
 			$tpl->vars["content"] = $this->titulo;
 			$tpl->vars["content"] = t("text_no_hay_elemento",array("elemento" => $this->singular));

@@ -67,12 +67,23 @@ class Form //extends App
 		return $this->getForm();
 	}
 	
-	function getInput($name = "", $type = "", $value = "", $onclick = "", $class = "", $checked = false, $text = ""){
+	function getInput($name = "", $type = "", $value = "", $onclick = "", $class = "", $checked = false, $text = "", $id = ""){
 		$tpl = new Template("html/input");
 		
+		if($id === ""){
+			$id = $name;
+		}
+		$tpl->vars["id"] = escapar($id);
 		$tpl->vars["name"] = escapar($name);
 		$tpl->vars["type"] = escapar($type);
-		$tpl->vars["text"] = $text;
+		$tpl->vars["text"] = "";
+		//$text ya llega escapado.
+		if($text !== ""){
+			$tpllabel = new Template("html/label");
+			$tpllabel->vars["id"] = escapar($id);
+			$tpllabel->vars["text"] = $text;
+			$tpl->vars["text"] = $tpllabel->get();
+		}
 		if($type != "password"){
 			$tpl->vars["value"] = escapar($value);
 		}
@@ -194,7 +205,9 @@ class Form //extends App
 					$tpl->vars["title"] = $title;
 					$tpl->vars["input"] = "";
 					
+					$n_opcion = 0;
 					foreach($opciones as $option=>$valueo){
+						$n_opcion++;
 						if(is_array($valueo)){
 							if(@$valueo["checked"]){
 								$checked = true;
@@ -222,7 +235,7 @@ class Form //extends App
 						/* !!! */
 						
 						
-						$tpl->vars["input"] .= $this->getInput($name_aux,$type,$valueo,$onclick,$class,$checked,"&nbsp;".escapar($option))."<br/>";
+						$tpl->vars["input"] .= $this->getInput($name_aux,$type,$valueo,$onclick,$class,$checked,"&nbsp;".escapar($option),$name."_".$n_opcion)."<br/>";
 					}
 					
 					return $tpl->get();

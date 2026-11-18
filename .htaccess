@@ -32,13 +32,11 @@ RewriteRule ^admin/(.*)/(.*)/ /index.php?uno=$1&dos=$2
 RewriteRule ^admin/(.*)/(.*) /index.php?uno=$1&dos=$2
 RewriteRule ^admin/(.*)/ /index.php?uno=$1
 RewriteRule ^admin/(.*) /index.php?uno=$1
-RewriteRule ^admin /index.php
+RewriteRule ^admin/?$ /index.php
 
 
-RewriteRule ^login/logout/ /index.php?uno=login&dos=logout
-RewriteRule ^login/logout /index.php?uno=login&dos=logout
-RewriteRule ^login/ /index.php?uno=login
-RewriteRule ^login /index.php?uno=login
+RewriteRule ^login/logout/?$ /index.php?uno=login&dos=logout
+RewriteRule ^login/?$ /index.php?uno=login
 
 
 

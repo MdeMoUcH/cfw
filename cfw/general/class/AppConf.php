@@ -25,8 +25,7 @@ class AppConf
 		"keywords" => "",
 		"analytics" => "",
 		"db.limit" => 1000,
-		"class.default" => "main",
-		"page.404" => "errorpage"
+		"class.default" => "main"
 	);
 	
 	function __construct()

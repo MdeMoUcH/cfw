@@ -36,6 +36,7 @@ Cada proyecto adapta estos ficheros, que no están en `specific` y no se actuali
   - `<Files .htaccess>` pasa a `<Files ".htaccess">` con `Require all denied`, en lugar de `order allow,deny` y `deny from all`, que necesitaban `mod_access_compat`.
   - Se quita la regla que redirigía `/uploads` a `http://localhost/`. Si tu sitio guarda en `uploads/` archivos que no deben descargarse, llévalos fuera de la raíz web o bloquéalos con su propia regla (por ejemplo, `RewriteRule ^uploads(/|$) - [F,NC,L]`).
   - Se quitan las reglas de `/login/register` y `/login/restorepassword`, que no tenían método.
+  - Las reglas de `/login`, `/login/logout` y `/admin` se anclan: `^login/logout/?$`, `^login/?$` y `^admin/?$`. Antes, `/loginfoo`, `/login/<otra cosa>`, `/login/logout/<otra cosa>` y `/adminfoo` caían en ellas; ahora dan 404. Cópialas, y si una URL propia dependía de esas coincidencias, dale su regla.
 - `cfw/.htaccess`, `config/.htaccess` y `data/.htaccess`, nuevos (`Require all denied`): cópialos también. Son la segunda barrera del código, de `config/config-servidor.ini`, con los datos de la base de datos, y de la clave privada, si el `.htaccess` raíz pierde sus reglas. CFW solo carga `cfw/` desde PHP, así que no bloquea nada que el sitio necesite.
 - `.gitignore`: añade `config/config-servidor.ini`, `data/*` y `!data/.htaccess`.
 - `db.sql`:
@@ -105,6 +106,8 @@ Cada proyecto adapta estos ficheros, que no están en `specific` y no se actuali
 - `Page` tiene los métodos `protected` nuevos `datosPaginacion` y `enlacesPaginacion`, y `AdminHelper` el `protected` nuevo `quitarDesactivados`, con la misma advertencia.
 - `Orm::getAllPaginado` ordena por `id`.
 - Los listados de `AdminHelper::init` y `users::listado` usan `getTotal()` y `getAllPaginado()` en lugar de `getAll()`, y se ordenan por `id`. Un `getAll()` redefinido en un ORM propio para filtrar u ordenar deja de aplicarse en el listado: traslada ese filtro u orden a `getTotal()` y `getAllPaginado()`.
+- `Form::getInput` admite un 8.º parámetro opcional, `$id`, que por defecto es el `name`. Un `Form` propio en `cfw/specific/class/` no recibe este cambio ni los ids nuevos.
+- Ids nuevos: cada opción de `radio`, `checkbox` y `checkbox_dinamico` pasa de `id="<name>"`, repetido, a `id="<name>_<n>"` (`n` desde 1, en el orden de `opciones`); las casillas del listado de `AdminHelper`, de `elementos[]` a `elemento_<id>`; y el selector de idioma de `cuenta`, de `fk_idioma` a `fk_idioma_<código>`. Los `name` no cambian. Un JS o CSS propio que buscara `#<name>` de un radio o una casilla debe usar el id nuevo o `[name=…]`. `checkbox_single` conserva `id="<name>"`.
 - `AdminHelper::form` guarda las opciones de `select_dinamico` y `select_dinamico_desactivado`, y lee `value` y marca `checked` de `checkbox_single`, en la clave del campo en `campos_form`, no en una entrada con su `name`. Si la clave y el `name` no coinciden, el formulario ya no pinta la fila separadora vacía de más que salía antes, y la casilla de `checkbox_single` sale marcada cuando el valor guardado coincide con su `value`.
 
 ### Plantillas y portada
@@ -114,21 +117,24 @@ Cada proyecto adapta estos ficheros, que no están en `specific` y no se actuali
 - El formulario de datos de `cuenta` pasa a `web/cuenta_usuario.tpl`, con `data-cifrar` y sin `name` en las contraseñas. `web/cuenta.tpl` lo pinta con `{aviso_cifrado}` y `{form_usuario}`. Si el sitio tiene su propia copia de `web/cuenta.tpl` en `cfw/specific/templates/`, actualízala: con la antigua no se ve el formulario nuevo, o las contraseñas se envían en claro y el servidor responde «formulario caducado».
 - Plantilla nueva `paginacion.tpl`, con los enlaces de paginación de los listados de `AdminHelper` y `users`.
 - `html/select.tpl` pone `id` y `name` entre comillas, y `Form` los escapa. Actualiza las copias de `cfw/specific/templates/html/select.tpl`: sin comillas, un `name` con caracteres especiales se pinta mal.
+- `html/input.tpl` usa `{id}` en lugar de `{name}` para el `id`, y el texto de los radios y casillas va en la plantilla nueva `html/label.tpl` (`<label for>`). Actualiza las copias de `html/input.tpl`.
+- `menu.tpl` y `menuadmin.tpl` cambian el enlace fijo a «Login» por `{enlace_sesion}`, que `get_menu` rellena con «Login» o con el botón «Salir». Una copia propia sigue mostrando «Login» con la sesión abierta.
+- En `listado_pro.tpl`, la columna de la casilla pasa de 10 a 30 px y la de ID de 30 a 70 px, para que la casilla no tape el número y un id largo no se parta. Actualiza las copias propias.
 
 ### Aspecto
-- `cascara.tpl` lleva `<!DOCTYPE html>`, así que el sitio pasa de modo quirks a modo estándar y cambia el pintado de tablas y alturas de línea. También añade `meta viewport`, `link rel="icon"` a `img/favicon.svg`, el nombre de la cabecera enlazado a la portada y `css/style.css?v=2`. Actualiza las copias de `cfw/specific/templates/cascara.tpl`.
-- `css/style.css` se reescribe. La regla `body` pasa de `tablas.css` a `style.css`, y `tablas.css` se carga con `?v=2`. Fusiona los cambios en el CSS propio del sitio. Clases nuevas: `mensaje`, `mensaje_Red`, `mensaje_Green`, `mensaje_Blue`, `form_cuenta`, `form_salir` y `acciones`.
+- `cascara.tpl` lleva `<!DOCTYPE html>`, así que el sitio pasa de modo quirks a modo estándar y cambia el pintado de tablas y alturas de línea. También añade `meta viewport`, `link rel="icon"` a `img/favicon.svg`, el nombre de la cabecera enlazado a la portada y `css/style.css?v=3`. Actualiza las copias de `cfw/specific/templates/cascara.tpl`.
+- `css/style.css` se reescribe. La regla `body` pasa de `tablas.css` a `style.css`, y `tablas.css` se carga con `?v=2`. Fusiona los cambios en el CSS propio del sitio. Clases nuevas: `mensaje`, `mensaje_Red`, `mensaje_Green`, `mensaje_Blue`, `form_cuenta`, `form_salir` y `acciones`. Reglas nuevas `select:disabled`, que atenúa los selects desactivados, y `#menu .form_salir`, que da al botón «Salir» del menú aspecto de enlace.
 - Plantillas:
   - `usuarios_admin.tpl` y `errores.tpl` pierden las clases `panel-title`, `fondo_claro` y `panel-body`.
   - `usuarios.tpl` y `elements.tpl` usan `h1` para el título.
   - `{content}` y `{error}` van dentro de un `div`, no de un `p`. Los errores de `ErrorCFW` salen en `<p>`, no en `<h2>`.
-  - `usuarios.tpl` y `usuarios_admin.tpl` pintan `{boton_salir}` (nueva `html/form_salir.tpl`), que `Page::show` solo rellena con sesión, salvo que la plantilla ya lo defina. `text_logout` deja de usarse en `general`.
+  - El cierre de sesión pasa al menú, con la plantilla nueva `html/form_salir.tpl` (POST a `login/logout` con `csrf`). `usuarios.tpl` y `usuarios_admin.tpl` ya no tienen botón «Salir» en el cuerpo, y `usuarios.tpl` pierde el `<br/>`, el `<hr/>` y el `div.acciones` finales. `Page::show` sigue rellenando `{boton_salir}` con sesión, salvo que la plantilla ya lo defina, para las plantillas propias. Una copia en `cfw/specific/templates/` de esas plantillas, o de otra que pinte `{boton_salir}`, muestra el botón dos veces (en el cuerpo y en el menú): quítalo de la copia. `text_logout` deja de usarse en `general`.
   - `html/p_color.tpl` añade las clases `mensaje mensaje_{color}`.
   - `web/cuenta_usuario.tpl` ya no lleva estilos en línea.
   - Actualiza las copias de estas plantillas en `cfw/specific/templates/`.
-- `get_menu` marca como activos Cuenta, Usuarios e Idiomas, y `/login` marca «Login» en lugar de «Inicio».
+- `get_menu` marca como activos Cuenta, Usuarios e Idiomas, y `/login` marca «Login» en lugar de «Inicio». Con sesión, el menú muestra «Salir» en lugar de «Login».
 - Cada página de `general` pone su `page_title`.
-- Textos: `text_enlace_admin`, `text_enlace_lista`, `text_enlace_nuevo`, `text_salir` y `text_crear_usuario` empiezan con mayúscula, y `text_titulo_form` pasa a «Formulario de {titulo}», lo que cambia también los títulos de los formularios de `AdminHelper`. Hay una clave nueva, `text_titulo_form_usuarios`. Las claves de `cfw/specific/lang/` siguen ganando.
+- Textos: `text_enlace_admin`, `text_enlace_lista`, `text_enlace_nuevo`, `text_salir` y `text_crear_usuario` empiezan con mayúscula, y `text_titulo_form` pasa a «Formulario de {titulo}», lo que cambia también los títulos de los formularios de `AdminHelper`. Hay una clave nueva, `text_titulo_form_usuarios`. En español, `text_confirmar_borrado` empieza con «¿» y `text_si` pasa a «Sí». Las claves de `cfw/specific/lang/` siguen ganando.
 - `users` tiene `$titulo_form` para el título del formulario: una subclase que cambie `$titulo` debe cambiarlo también.
 - `img/favicon.svg` es el icono de CFW: cada sitio pone el suyo.
 
@@ -163,10 +169,11 @@ Cada proyecto adapta estos ficheros, que no están en `specific` y no se actuali
 
 ### JavaScript
 - El login usa jQuery 4.0.0 (`js/jquery-4.0.0.min.js`); los formularios con contraseña, node-forge 1.4.2 (`js/forge-1.4.2.min.js`) y `js/cifrado.js`; y el listado de `AdminHelper`, Prototype 1.7.3 (`js/prototype-1.7.3.js`) con TableKit 1.3b. Prototype 1.7.3 lleva el aviso CVE-2020-27511 (ReDoS en `stripTags` y `unescapeHTML`), sin parche: no pases datos de usuario a esas funciones.
+- `js/tablekit-cfw.js`, nuevo, corrige el patrón de moneda de TableKit (`$ £ ¥ € ¤`), que en `tablekit.js` perdió esos símbolos y ordenaba esas columnas como texto. Lo carga el listado de `AdminHelper` después de `tablekit.js`; una página propia que use TableKit debe cargarlo también, después de `tablekit.js`.
 - Se retira jHtmlArea: desaparecen `$jhtmlarea` de `AdminHelper` y la plantilla `elements_html`.
 - `main.js` solo conserva `sendLoginForm` y `devolver_mensaje`. Se eliminan `sendRegisterForm`, `comprobar_mail`, `sendAForm`, `muestraError`, `salir`, `sendFormUser` y los textos que usaban.
 - `main.js` y `cifrado.js` pintan sus mensajes con las clases `mensaje mensaje_Red`, y se cargan como `main.js?v=3` y `cifrado.js?v=2`. Si el sitio tiene sus propias copias, actualízalas.
 - La edición en línea de TableKit del listado de `AdminHelper` sigue desactivada en el núcleo. Si la activas (tabla con clase `editable` y cabeceras sin `noedit` cuyo `id` es la columna), `listado_pro.tpl` añade el `csrf` al POST y, si `TableKit.options.editAjaxURI` sigue en su valor por defecto (`/`), lo dirige a `admin/<slug>/editfield`; un `editAjaxURI` ya configurado se conserva. El `csrf` solo se añade si esa URL es del mismo origen que la página. El `<script>` pasa a `tablekit.js` una copia de las opciones de Ajax, para que no escriba en `TableKit.options.editAjaxOptions`, y, si la respuesta es un error, devuelve a la celda su contenido anterior y muestra un `alert` (con el motivo si es un 400). Un `listado_pro.tpl` propio en `cfw/specific/templates/` debe copiar el segundo `<script>` del nuevo, que usa la variable `error_edicion_json`: sin él, la respuesta es 403.
 
 ### Claves nuevas de `config/config.ini`
-Ninguna: `config/config.ini` llega con CFW, con todas las claves de esta versión, y el sitio solo cambia sus valores (ver «Archivos que revisar a mano»). Respecto al `cfw/config.ini` de 1.x, desaparece `langs`.
+Ninguna: `config/config.ini` llega con CFW, con todas las claves de esta versión, y el sitio solo cambia sus valores (ver «Archivos que revisar a mano»). Respecto al `cfw/config.ini` de 1.x, desaparecen `langs` y `page.404`, que nunca se usó: si se deja, se ignora, y si el código propio la leía, el sitio la mantiene en su `config/config.ini`.

@@ -369,6 +369,15 @@ class Page extends App
 			$vars["enlaces_usuario"] .= '<li '.($selected === "idiomas" ? 'class="active" ' : '').'><a href="'.$this->config["urlbase"].'admin/idiomas">'.t("text_menu_idiomas").'</a></li>';
 		}
 		
+		//Con sesión, el cierre por POST con csrf; sin ella, el enlace al login.
+		if($this->session->isUserLogged()){
+			$tpl_salir = new Template("html/form_salir");
+			$tpl_salir->vars["urlbase"] = $this->config["urlbase"];
+			$vars["enlace_sesion"] = '<li>'.$tpl_salir->get().'</li>';
+		}else{
+			$vars["enlace_sesion"] = '<li '.($selected === "login" ? 'class="active" ' : '').'><a href="'.$this->config["urlbase"].'login">'.t("text_menu_login").'</a></li>';
+		}
+		
 		$tpl->set_vars($vars);
 		//muere($tpl->vars,1);
 		$tpl->set_vars($this->config);

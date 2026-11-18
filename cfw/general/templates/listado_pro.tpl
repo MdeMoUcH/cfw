@@ -3,8 +3,8 @@
 <table id="tabla" name="tabla" width="100%" class="table table-striped">
 <thead>
 <tr>
-	<th width="10px" class="noedit th_listado"></th>
-	<th width="30px" class="sortfirstasc noedit th_listado" id="id">{text_col_id}</th>
+	<th width="30px" class="noedit th_listado"></th>
+	<th width="70px" class="sortfirstasc noedit th_listado" id="id">{text_col_id}</th>
 	<th id="nombre" class="noedit th_listado">{text_col_nombre}</th>
 	<th width="120px" class="noedit th_listado">{text_col_acciones}</th>
 </tr>
