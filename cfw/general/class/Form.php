@@ -228,12 +228,13 @@ class Form //extends App
 					return $tpl->get();
 				break;
 			case "select":
+			case "select_desactivado":
 			case "select_dinamico":
 			case "select_dinamico_desactivado":
 			
 					$tpl = new Template("html/select");
-					$tpl->vars["id"] = $name;
-					$tpl->vars["name"] = $name;
+					$tpl->vars["id"] = escapar($name);
+					$tpl->vars["name"] = escapar($name);
 					$tpl->vars["options"] = "";
 					if($type == "select_dinamico_desactivado" || $type == "select_desactivado"){
 						$tpl_aux_1 = new Template("html/disabled");

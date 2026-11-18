@@ -60,8 +60,8 @@ class AdminHelper extends Page implements PaginaAdmin{
 		$tpl->vars["slug"] = $this->slug;
 		
 		$orm = new $this->class();
-		//$elements = $orm->getAllPAginado($pag,$this->paginacion);
-		$elements = $orm->getAll();
+		$a_pag = $this->datosPaginacion($orm,$pag,$this->paginacion);
+		$elements = $orm->getAllPaginado($a_pag["pagina"],$a_pag["por_pagina"]);
 		
 		if($elements){
 			$tpl->vars["content"] = "";
@@ -104,6 +104,7 @@ class AdminHelper extends Page implements PaginaAdmin{
 			$tpl->vars["content"] = $this->titulo;
 			$tpl->vars["content"] = t("text_no_hay_elemento",array("elemento" => $this->singular));
 		}
+		$tpl->vars["content"] .= $this->enlacesPaginacion($this->config["urlbase"]."admin/".$this->slug."/pag/",$a_pag["pagina"],$a_pag["paginas"]);
 		
 		$orm->cerrar();
 		
@@ -164,7 +165,7 @@ class AdminHelper extends Page implements PaginaAdmin{
 		$tplmsg = new Template("html/p_color");
 		
 		if($save != "" && @$_SERVER["REQUEST_METHOD"] === "POST"){
-			if($orm->insert($_POST)){
+			if($orm->insert($this->quitarDesactivados($orm,$_POST))){
 				$id_aux = (int)mysqli_insert_id($orm->conexion);
 				
 				$tplmsg->vars["text"] = "";
@@ -224,7 +225,7 @@ class AdminHelper extends Page implements PaginaAdmin{
 			}
 		}else{
 			if(count($_POST) >= 1 && $b_insert_error){
-				$a_values = $_POST;
+				$a_values = $this->quitarDesactivados($orm,$_POST);
 			}
 			if(@$orm->campos["fk_id_usuario"] != ""){
 				$orm->campos_form["fk_id_usuario"] = array("title" => "","name" => "fk_id_usuario","type" => "hidden", "value" => $this->session->data["id_usuario"]);
@@ -233,7 +234,7 @@ class AdminHelper extends Page implements PaginaAdmin{
 		
 		$orm->cerrar();
 		
-		foreach((array)$orm->campos_form as $campo){
+		foreach((array)$orm->campos_form as $clave => $campo){
 			if(!isset($campo["name"])){
 				continue;
 			}
@@ -250,12 +251,12 @@ class AdminHelper extends Page implements PaginaAdmin{
 						}
 					}
 					//$orm->campos_form[$campo["name"]]["type"] = "select";
-					$orm->campos_form[$campo["name"]]["opciones"] = $a_opciones;
+					$orm->campos_form[$clave]["opciones"] = $a_opciones;
 			}elseif(@$campo["type"] == "checkbox_single"){
 				$valor_actual = isset($a_values[$campo["name"]]) ? $a_values[$campo["name"]] : null;
-				$valor_campo = isset($orm->campos_form[$campo["name"]]["value"]) ? $orm->campos_form[$campo["name"]]["value"] : null;
+				$valor_campo = isset($orm->campos_form[$clave]["value"]) ? $orm->campos_form[$clave]["value"] : null;
 				if($valor_actual == $valor_campo){
-					$orm->campos_form[$campo["name"]]["checked"] = true;
+					$orm->campos_form[$clave]["checked"] = true;
 				}
 			}
 		}
@@ -317,7 +318,7 @@ class AdminHelper extends Page implements PaginaAdmin{
 					$this->niapa_checkboxes($campo);
 				}
 			}
-			if($orm->update($_POST,$id)){
+			if($orm->update($this->quitarDesactivados($orm,$_POST),$id)){
 				$tplmsg->vars["color"] = "Green";
 				$tplmsg->vars["text"] = t("text_elemento_actualizado",array("Elemento" => ucfirst((string)$this->singular)));
 					
@@ -443,6 +444,31 @@ class AdminHelper extends Page implements PaginaAdmin{
 			}
 		}
 		return $a_editables;
+	}
+	
+	
+	//Quita de los datos enviados los campos que el formulario pinta desactivados, por su name y por su clave en campos_form (esta, solo si no es el name de un campo no desactivado).
+	protected function quitarDesactivados($orm,$a_datos){
+		$a_desactivados = array("select_desactivado","select_dinamico_desactivado");
+		$a_activos = array();
+		foreach((array)$orm->campos_form as $a_campo){
+			if(is_array($a_campo) && isset($a_campo["name"]) && is_string($a_campo["name"]) && !in_array(@$a_campo["type"],$a_desactivados,true)){
+				$a_activos[] = $a_campo["name"];
+			}
+		}
+		foreach((array)$orm->campos_form as $clave => $a_campo){
+			if(!is_array($a_campo) || !isset($a_campo["name"]) || !is_string($a_campo["name"])){
+				continue;
+			}
+			$s_tipo = (isset($a_campo["type"]) && is_string($a_campo["type"])) ? $a_campo["type"] : "";
+			if(in_array($s_tipo,$a_desactivados,true)){
+				unset($a_datos[$a_campo["name"]]);
+				if(!in_array((string)$clave,$a_activos,true)){
+					unset($a_datos[$clave]);
+				}
+			}
+		}
+		return $a_datos;
 	}
 	
 	

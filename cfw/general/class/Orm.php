@@ -142,7 +142,7 @@ class Orm extends Bbdd
 		$elementos = max(1,(int)$elementos);
 		$limit_1 = (max(1,(int)$pag)-1) * $elementos;
 		$limit_2 = $elementos;
-		$s_sql = "SELECT * FROM ".$this->tabla." WHERE borrado = 0 LIMIT ".$limit_1.",".$limit_2."";
+		$s_sql = "SELECT * FROM ".$this->tabla." WHERE borrado = 0 ORDER BY id LIMIT ".$limit_1.",".$limit_2."";
 		//die($s_sql);
 		return $this->select($s_sql);
 	}

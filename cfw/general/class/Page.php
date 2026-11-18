@@ -231,6 +231,56 @@ class Page extends App
 	}//fun textoFalloCifrado
 	
 	
+	//Página pedida (acotada a 1..paginas), total de páginas y filas por página para Orm::getAllPaginado.
+	protected function datosPaginacion($orm, $pag, $i_por_pagina)
+	{
+		$i_por_pagina = (int)$i_por_pagina;
+		if($i_por_pagina < 1)
+		{
+			$i_por_pagina = (int)$this->config["db.limit"];
+		}//if
+		if($i_por_pagina < 1)
+		{
+			$i_por_pagina = 1000;
+		}//if
+		
+		$i_paginas = max(1, (int)ceil((int)$orm->getTotal() / $i_por_pagina));
+		
+		$s_pag = is_scalar($pag) ? (string)$pag : "";
+		$i_pagina = 1;
+		if(ctype_digit($s_pag) && (int)$s_pag >= 1)
+		{
+			$i_pagina = min((int)$s_pag, $i_paginas);
+		}//if
+		
+		return array("pagina" => $i_pagina, "paginas" => $i_paginas, "por_pagina" => $i_por_pagina);
+	}//fun datosPaginacion
+	
+	
+	//Enlaces a $s_url.<n>; vacío si solo hay una página.
+	protected function enlacesPaginacion($s_url, $i_pagina, $i_paginas)
+	{
+		$i_pagina = (int)$i_pagina;
+		$i_paginas = (int)$i_paginas;
+		if($i_paginas <= 1)
+		{
+			return "";
+		}//if
+		
+		$a_enlaces = array("primera" => 1, "anterior" => $i_pagina - 1, "siguiente" => $i_pagina + 1, "ultima" => $i_paginas);
+		$tpl = new Template("paginacion");
+		foreach($a_enlaces as $s_nombre=>$i_destino)
+		{
+			$s_texto = t("text_paginacion_".$s_nombre);
+			$b_activo = ($s_nombre === "primera" || $s_nombre === "anterior") ? $i_pagina > 1 : $i_pagina < $i_paginas;
+			$tpl->vars[$s_nombre] = $b_activo ? '<a href="'.escapar($s_url.$i_destino).'">'.$s_texto.'</a>' : $s_texto;
+		}//foreach
+		$tpl->vars["texto"] = t("text_paginacion_pagina", array("pagina" => $i_pagina, "paginas" => $i_paginas));
+		
+		return $tpl->get();
+	}//fun enlacesPaginacion
+	
+	
 	function set_vars($vars)
 	{
 		if(is_array($vars))

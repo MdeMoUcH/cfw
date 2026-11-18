@@ -98,12 +98,22 @@ Cada proyecto adapta estos ficheros, que no están en `specific` y no se actuali
 - `t()` es global: una función `t` en `cfw/specific/utils/functions.php` da un fatal.
 - `cuenta` muestra «Ya existe un usuario con ese e-mail.» si el email nuevo es de otra cuenta, en lugar del error genérico.
 - `intentos_carpeta`, `intentos_archivo`, `intentos_abrir`, `intentos_bloqueado`, `intentos_fallo`, `intentos_limpiar` e `intentos_purgar` son funciones globales nuevas: no pueden repetirse en `cfw/specific/utils/functions.php`, porque PHP da un error fatal.
+- `select_desactivado` pasa de pintarse como un texto editable que se guardaba a un select deshabilitado con el valor actual, que no se envía ni se guarda.
+- `AdminHelper::form` y `AdminHelper::edit` ignoran lo enviado para los campos de tipo `select_desactivado` y `select_dinamico_desactivado` (buscados por su `name` y por su clave en `campos_form`; por la clave, salvo que otro campo no desactivado la use como `name`), también si un JS propio reactiva el select. En el alta, esa columna toma el valor por defecto de la BD. Para que el formulario guarde la columna, usa otro tipo.
+- El listado de `AdminHelper` se pagina: un `$paginacion` ya definido en una subclase empieza a aplicarse. Sin él, cada página tiene `db.limit` filas, y lo que antes no se mostraba por pasar de `db.limit` queda en las páginas siguientes. `admin/<slug>/pag/<n>` muestra solo esa página (ver «Administración con `AdminHelper`» en [DESARROLLO.md](DESARROLLO.md)).
+- El listado de `users` también se pagina con `$paginacion`, declarada en `users`: una subclase que la redefina debe declararla `protected`. `users` tiene el método público nuevo `pag` (`admin/users/pag/<n>`) y el `protected` nuevo `listado`, al que llama `init()`. Un método con alguno de esos nombres en una subclase lo redefine, y con una firma o una visibilidad incompatibles da un error fatal.
+- `Page` tiene los métodos `protected` nuevos `datosPaginacion` y `enlacesPaginacion`, y `AdminHelper` el `protected` nuevo `quitarDesactivados`, con la misma advertencia.
+- `Orm::getAllPaginado` ordena por `id`.
+- Los listados de `AdminHelper::init` y `users::listado` usan `getTotal()` y `getAllPaginado()` en lugar de `getAll()`, y se ordenan por `id`. Un `getAll()` redefinido en un ORM propio para filtrar u ordenar deja de aplicarse en el listado: traslada ese filtro u orden a `getTotal()` y `getAllPaginado()`.
+- `AdminHelper::form` guarda las opciones de `select_dinamico` y `select_dinamico_desactivado`, y lee `value` y marca `checked` de `checkbox_single`, en la clave del campo en `campos_form`, no en una entrada con su `name`. Si la clave y el `name` no coinciden, el formulario ya no pinta la fila separadora vacía de más que salía antes, y la casilla de `checkbox_single` sale marcada cuando el valor guardado coincide con su `value`.
 
 ### Plantillas y portada
 - Las plantillas ya no admiten PHP incrustado por `eval`.
 - Los valores con `'` se guardan como `&#039;`. Escapa la salida con `escapar()`, que no codifica dos veces.
 - La portada usa `portada.tpl` y `portada.ini`: `titulo` y `mensaje` de `main.ini` ya no se muestran en ella, y `/admin/main/init/main` da 404. `main.tpl` sigue en uso para `AdminHelper::delete`. Para personalizar la portada, usa `cfw/specific/lang/<código>/portada.ini` o `cfw/specific/templates/portada.tpl`. Una `main` propia en `cfw/specific/pages/main.php` debe declarar su lista de plantillas con `portada` (ver «Páginas, clases y funciones»). Un sitio derivado debe sustituir esta portada en producción, porque publica el framework y sus versiones.
 - El formulario de datos de `cuenta` pasa a `web/cuenta_usuario.tpl`, con `data-cifrar` y sin `name` en las contraseñas. `web/cuenta.tpl` lo pinta con `{aviso_cifrado}` y `{form_usuario}`. Si el sitio tiene su propia copia de `web/cuenta.tpl` en `cfw/specific/templates/`, actualízala: con la antigua no se ve el formulario nuevo, o las contraseñas se envían en claro y el servidor responde «formulario caducado».
+- Plantilla nueva `paginacion.tpl`, con los enlaces de paginación de los listados de `AdminHelper` y `users`.
+- `html/select.tpl` pone `id` y `name` entre comillas, y `Form` los escapa. Actualiza las copias de `cfw/specific/templates/html/select.tpl`: sin comillas, un `name` con caracteres especiales se pinta mal.
 
 ### Aspecto
 - `cascara.tpl` lleva `<!DOCTYPE html>`, así que el sitio pasa de modo quirks a modo estándar y cambia el pintado de tablas y alturas de línea. También añade `meta viewport`, `link rel="icon"` a `img/favicon.svg`, el nombre de la cabecera enlazado a la portada y `css/style.css?v=2`. Actualiza las copias de `cfw/specific/templates/cascara.tpl`.
@@ -131,6 +141,7 @@ Cada proyecto adapta estos ficheros, que no están en `specific` y no se actuali
 - Los `.ini` de idioma se leen con `INI_SCANNER_RAW`. Un fichero con una comilla sin cerrar o una línea sin clave se ignora y deja una línea `CFW:` en el log.
 - `titulo` y `singular` de las subclases de `AdminHelper` no se traducen solos: los define cada sitio.
 - `data/idiomas.ini` ya no se lee si es un enlace (por ejemplo, a una carpeta compartida de despliegue): el multiidioma se desactiva, `/admin/idiomas` muestra el aviso y queda una línea `CFW:` en el log en cada petición. Copia su contenido a un archivo normal o vuelve a guardar desde `/admin/idiomas` (ver «Multiidioma» en «Despliegue» de [INSTALACION.md](INSTALACION.md)).
+- Claves nuevas en `textos.ini`: `text_paginacion_primera`, `text_paginacion_anterior`, `text_paginacion_siguiente`, `text_paginacion_ultima` y `text_paginacion_pagina` (con `{pagina}` y `{paginas}`). CFW las trae en es y en: añádelas en los idiomas propios.
 
 ### Contraseñas
 - **Migración desde md5.** Los md5 existentes se aceptan una vez y se convierten a `password_hash` en el primer login correcto, sin que nadie cambie su contraseña. Las cuentas que nunca inicien sesión siguen en md5. El hash también se renueva si cambia el coste de `PASSWORD_DEFAULT`, por ejemplo al cambiar de versión de PHP.

@@ -15,6 +15,7 @@ class users extends Page implements PaginaAdmin{
 	protected $titulo_form = "";
 	protected $slug = "usuarios";
 	protected $template = "usuarios_admin";
+	protected $paginacion;
 	
 	
 	function __construct(){
@@ -26,6 +27,16 @@ class users extends Page implements PaginaAdmin{
 	
 	
 	function init(){
+		$this->listado(1);
+	}
+	
+	
+	public function pag($pag = ""){
+		$this->listado($pag);
+	}
+	
+	
+	protected function listado($pag){
 		$this->vars["menu"] = $this->get_menu($this->slug);
 		
 		$tpl = new Template($this->template);
@@ -35,7 +46,8 @@ class users extends Page implements PaginaAdmin{
 		
 		$orm = new $this->class();
 		
-		$users = $orm->getAll();
+		$a_pag = $this->datosPaginacion($orm,$pag,$this->paginacion);
+		$users = $orm->getAllPaginado($a_pag["pagina"],$a_pag["por_pagina"]);
 		if($users){
 			$tpl->vars["content"] = "";
 			foreach($users as $user){
@@ -49,6 +61,7 @@ class users extends Page implements PaginaAdmin{
 		}else{
 			$tpl->vars["content"] = t("text_no_hay_usuarios");
 		}
+		$tpl->vars["content"] .= $this->enlacesPaginacion($this->config["urlbase"]."admin/users/pag/",$a_pag["pagina"],$a_pag["paginas"]);
 		$orm->cerrar();
 		//muere($tpl,1,0);muere($tpl->get(),1);
 		$this->show($tpl);
