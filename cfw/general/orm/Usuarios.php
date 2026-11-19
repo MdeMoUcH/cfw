@@ -198,24 +198,24 @@ class Usuarios extends Orm
 	}
 	
 	
-	function setLastVisit($id,$timezone = ''){
-		$a_fila = parent::getById($id);
-		$a_data = array();
-		$a_data["ultimo_acceso"] = date("Y-m-d H:i:s");
-		//Sin la fila no se conoce el contador: no se pisa.
-		if($a_fila){
-			$a_data["visitas"] = $a_fila["visitas"]+1;
+	function setLastVisit($id){
+		if(($id = $this->filtroId($id)) === false){
+			return false;
 		}
-		$a_data["timezone"] = $timezone;
+		if(!$this->filaEditable("id", $id)){
+			return false;
+		}
+		//El incremento va en el propio UPDATE para no perder visitas simultáneas.
+		$s_sql = "UPDATE ".$this->tabla." SET ultimo_acceso = '".date("Y-m-d H:i:s")."', visitas = visitas + 1 WHERE id = ".$id." AND borrado = 0";
 		
-		return parent::update($a_data,$id);
+		return $this->ejecutarInsertUpdate($s_sql);
 	}
 	
 	function getUserNameById($id){
 		if(($id = $this->filtroId($id)) === false){
 			return t("text_usuario_desconocido");
 		}
-		$s_sql = "SELECT email FROM ".$this->tabla." WHERE id = ".$id."";
+		$s_sql = "SELECT email FROM ".$this->tabla." WHERE id = ".$id." AND borrado = 0";
 		
 		if($this->ejecutarConsulta($s_sql)){
 			return $this->resultado[0]["email"];
