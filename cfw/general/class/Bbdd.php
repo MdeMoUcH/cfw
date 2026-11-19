@@ -14,6 +14,9 @@ class Bbdd extends App
 {
     public $resultado;
     public $conexion;
+    //Segundos; el de lectura cubre también el saludo del servidor y cada consulta.
+    const TIEMPO_CONEXION = 5;
+    const TIEMPO_LECTURA = 30;
     
     function __construct()
     {
@@ -24,17 +27,23 @@ class Bbdd extends App
         //Desde PHP 8.1 mysqli lanza excepciones por defecto; aquí se trabaja con los false.
         mysqli_report(MYSQLI_REPORT_OFF);
         
-        $this->conexion = @mysqli_connect($this->config["db.host"],$this->config["db.user"],$this->config["db.pass"],$this->config["db.name"]);
-        
-        if($this->conexion)
-        {
-            mysqli_set_charset($this->conexion, "utf8");
-        }//if
-        else
+        $this->conexion = mysqli_init();
+        if(!$this->conexion
+            || !mysqli_options($this->conexion, MYSQLI_OPT_CONNECT_TIMEOUT, self::TIEMPO_CONEXION)
+            || !mysqli_options($this->conexion, MYSQLI_OPT_READ_TIMEOUT, self::TIEMPO_LECTURA)
+            || !@mysqli_real_connect($this->conexion, $this->config["db.host"], $this->config["db.user"], $this->config["db.pass"], $this->config["db.name"]))
         {
             error_log("CFW: no se pudo conectar a la base de datos (error ".mysqli_connect_errno().")");
+            $this->conexion = false;
             $this->errores[] = t("text_bd_conexion");
-        }//else
+        }//if
+        elseif(!mysqli_set_charset($this->conexion, "utf8"))
+        {
+            error_log("CFW: no se pudo fijar el juego de caracteres de la base de datos (error ".mysqli_errno($this->conexion).")");
+            mysqli_close($this->conexion);
+            $this->conexion = false;
+            $this->errores[] = t("text_bd_conexion");
+        }//elseif
     }//constructor
 
 

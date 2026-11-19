@@ -21,7 +21,7 @@ Reglas y trampas para construir o cambiar un sitio hecho con CFW. Para saber qu�
 - `/admin/<nombre>` es solo una forma de la URL: **no protege nada**. Protege el constructor:
   - `$this->exigirUsuario()` para páginas con sesión.
   - `$this->exigirAdmin()` para administración. Declara además `implements PaginaAdmin`: así `index.php` responde 403 si el constructor no lo ha llamado.
-  - Los dos comprueban en la BD que el usuario sigue activo (y administrador): si no, cierran la sesión y llevan al login, y si la BD falla responden 503.
+  - Los dos comprueban en la BD que el usuario sigue activo (y administrador): si no, cierran la sesión y llevan al login, y si la BD falla o no responde a tiempo responden 503.
   - Las subclases de `AdminHelper` ya lo hacen con `parent::__construct()`.
   - `exigirUsuario()` solo garantiza que hay sesión. Si la página recibe el id de un recurso, comprueba que es de ese usuario (`$this->session->data["id_usuario"]`), o cualquiera con sesión lee o cambia los de otro.
 - **El constructor se ejecuta antes de que `index.php` compruebe el token CSRF y el administrador.** No proceses POST en el constructor, y en una página de administración no hagas nada antes de `exigirAdmin()` (o de `parent::__construct()` en una subclase de `AdminHelper`).
@@ -129,7 +129,7 @@ Reglas y trampas para construir o cambiar un sitio hecho con CFW. Para saber qu�
 - Las claves de CFW que falten en los dos toman un valor por defecto del código (`AppConf`); las que no lo tienen (`urlbase`, `email` y `db.*`) quedan vacías con un aviso en el log. Una clave nueva de CFW que se lee con `$this->config[...]` necesita un valor por defecto en `AppConf` o un aviso, y figurar en el apartado de su versión en [MIGRACION.md](MIGRACION.md).
 - Las claves propias del sitio llevan un prefijo propio y van en `config/config.ini`, o en `config/config-servidor.ini` si dependen del servidor o son secretas.
 - Se lee sin secciones: `$this->config["db.host"]`. Las secciones solo ordenan: la misma clave en dos secciones se pisa.
-- Las comillas siguen las reglas de `parse_ini_file`, distintas de las de los textos, y un fichero mal formado se ignora entero: ver el paso 3 de «Puesta en marcha» en [INSTALACION.md](INSTALACION.md).
+- Las comillas siguen las reglas de `parse_ini_file`, distintas de las de los textos, y un fichero mal formado o que no se leería tal como está escrito se ignora entero: ver el paso 3 de «Puesta en marcha» en [INSTALACION.md](INSTALACION.md).
 - `urlbase` y `pathbase` terminan en barra, que se añade si falta. Las URL y rutas se construyen con ellas, no a mano.
 
 ## Estilo del código
