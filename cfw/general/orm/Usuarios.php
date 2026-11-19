@@ -127,8 +127,8 @@ class Usuarios extends Orm
 	
 	
 	function insert($a_array, $tabla = ''){
-		//Todas las filas, borradas incluidas: el UNIQUE de email también las cuenta.
-		$s_sql = "SELECT id FROM ".$this->tabla." WHERE email = '".$this->filtro(@$a_array["email"])."'";
+		//Solo los no borrados, como el UNIQUE de email_activo: el email de un borrado se puede reutilizar.
+		$s_sql = "SELECT id FROM ".$this->tabla." WHERE email = '".$this->filtro(@$a_array["email"])."' AND borrado = 0";
 		
 		$i_errores = count($this->errores);
 		$this->ejecutarConsulta($s_sql);
@@ -152,11 +152,11 @@ class Usuarios extends Orm
 	function update($a_datos, $id = ""){
 		$id_efectivo = ($id != "") ? $id : @$a_datos["id"];
 		if(@$a_datos["email"] != ""){
-			$s_sql = "SELECT id FROM ".$this->tabla." WHERE email = '".$this->filtro($a_datos["email"])."'";
+			$s_sql = "SELECT id FROM ".$this->tabla." WHERE email = '".$this->filtro($a_datos["email"])."' AND borrado = 0";
 			
 			$i_errores = count($this->errores);
 			if($this->ejecutarConsulta($s_sql)){
-				//Cualquier otra fila con ese email, borrada o no, lo hace repetido.
+				//Cualquier otra fila no borrada con ese email lo hace repetido.
 				foreach($this->resultado as $a_fila){
 					if($a_fila["id"] != $id_efectivo){
 						$this->errores[] = t('text_error_usuario_mail');
@@ -172,10 +172,10 @@ class Usuarios extends Orm
 	}
 	
 	
-	//Si el UNIQUE de email rechaza la escritura (otra petición se adelantó), se avisa igual que en la comprobación previa.
+	//Si el UNIQUE de email_activo (o el de email, sin migrar) rechaza la escritura (otra petición se adelantó), se avisa igual que en la comprobación previa.
 	protected function emailRepetido($b_ok){
 		if(!$b_ok && $this->conexion && mysqli_errno($this->conexion) === 1062
-			&& preg_match("/ for key '(?:[^']*\\.)?email'$/", mysqli_error($this->conexion)) === 1
+			&& preg_match("/ for key '(?:[^']*\\.)?email(?:_activo)?'$/", mysqli_error($this->conexion)) === 1
 			&& end($this->errores) === t("text_bd_escritura")){
 			array_pop($this->errores);
 			$this->errores[] = t('text_error_usuario_mail');

@@ -15,6 +15,7 @@ class AdminHelper extends Page implements PaginaAdmin{
 	protected $extensiones_permitidas = array("tpl","css");
 	protected $s_error_subida = "";
 	protected $a_subidas_guardadas = array();
+	protected $a_errores_categorias = array();
 	//Unos 80 MB al decodificar: cabe en un memory_limit de 128M.
 	protected $img_max_pixeles = 16000000;
 	//Las define cada subclase.
@@ -191,7 +192,7 @@ class AdminHelper extends Page implements PaginaAdmin{
 					$tplmsg->vars["text"] = t("text_elemento_insertado",array("elemento" => $this->singular));
 					
 					if(@$this->categorias && isset($_POST["categorias"])){
-						$this->guardarCategorias($id,$_POST["categorias"]);
+						$this->avisarCategorias($this->guardarCategorias($id,$_POST["categorias"]),$tplmsg);
 					}
 				}else{
 					$this->deshacerAlta($orm,$id_aux,$tplmsg);
@@ -223,6 +224,16 @@ class AdminHelper extends Page implements PaginaAdmin{
 				$orm->campos_form[@$orm->primarykey] = array("title" => "","name" => "id","type" => "hidden");
 				//$orm->campos_form["borrado"] = array("title" => "Borrado","name" => "borrado","type" => "radio", "opciones" => array("Si" => "1", "No" => "0"));
 				$s_action = "edit/".$id."/save";
+			}else{
+				//Borrada o inexistente: sin fila no se pinta el formulario, que sería un alta.
+				$orm->cerrar();
+				$tpl = $this->load_template();
+				$tpl->vars["urlbase"] = $this->config["urlbase"];
+				$tpl->vars["titulo"] = t("text_titulo_form",array("titulo" => $this->titulo));
+				$tpl->vars["slug"] = $this->slug;
+				$tpl->vars["content"] = $s_msg."<p>".t("text_elemento_no_encontrado",array("elemento" => $this->singular))."</p><p><a href='".$this->config["urlbase"]."admin/".escapar($this->slug)."'>".t("text_enlace_lista")."</a></p>";
+				$this->show($tpl);
+				return;
 			}
 		}else{
 			if(count($_POST) >= 1 && $b_insert_error){
@@ -325,13 +336,13 @@ class AdminHelper extends Page implements PaginaAdmin{
 					
 				$this->guardarSubidas($orm,$id,$tplmsg);
 				
-				$s_msg = $tplmsg->get();
-				
 				if(@$this->categorias){
 					if(isset($_POST["categorias"])){
-						$this->guardarCategorias($id,$_POST["categorias"]);
+						$this->avisarCategorias($this->guardarCategorias($id,$_POST["categorias"]),$tplmsg);
 					}
 				}
+				
+				$s_msg = $tplmsg->get();
 			}else{
 				
 				$tplmsg->vars["text"] = "";
@@ -483,23 +494,26 @@ class AdminHelper extends Page implements PaginaAdmin{
 	
 	
 	protected function load_template(){
-		if(file_exists($this->config["pathbase"]."cfw/general/templates/".$this->template.".tpl") || 
-			file_exists($this->config["pathbase"]."cfw/specific/templates/".$this->template.".tpl")){
-			$tpl = new Template($this->template);
-		}else{
-			$tpl = new Template("elements");
-		}
-		return $tpl;
+		return $this->existePlantilla($this->template) ? new Template($this->template) : new Template("elements");
 	}
 	
 	private function load_template_single(){
-		if(file_exists($this->config["pathbase"]."cfw/general/templates/".$this->slug.".tpl") || 
-			file_exists($this->config["pathbase"]."cfw/specific/templates/".$this->slug.".tpl")){
-			$tpl = new Template($this->template_single != "" ? $this->template_single : $this->slug);
-		}else{
-			$tpl = new Template("element");
-		}	
-		return $tpl;
+		$s_nombre = $this->template_single != "" ? $this->template_single : $this->slug;
+		return $this->existePlantilla($s_nombre) ? new Template($s_nombre) : new Template("element");
+	}
+	
+	//Con o sin .tpl y con la misma validación que Template, para no acabar en su 404.
+	private function existePlantilla($s_nombre){
+		$s_nombre = is_scalar($s_nombre) ? (string)$s_nombre : "";
+		$pos = strpos($s_nombre,".tpl");
+		if($pos != 0){
+			$s_nombre = substr($s_nombre,0,$pos);
+		}
+		if(preg_match('#^[A-Za-z0-9_-]+(/[A-Za-z0-9_-]+)*$#D',$s_nombre) !== 1){
+			return false;
+		}
+		return file_exists($this->config["pathbase"]."cfw/specific/templates/".$s_nombre.".tpl") || 
+			file_exists($this->config["pathbase"]."cfw/general/templates/".$s_nombre.".tpl");
 	}
 	
 	private function niapa_checkboxes($txt){
@@ -575,14 +589,13 @@ class AdminHelper extends Page implements PaginaAdmin{
 	
 	//Solo con el id que devolvió este INSERT: el id de la URL es de otra fila.
 	protected function deshacerAlta($orm,$id_alta,$tplmsg){
-		//Sin id propio, el nombre del archivo podría ser de otra fila.
-		if($id_alta){
-			foreach($this->a_subidas_guardadas as $s_archivo){
-				@unlink($s_archivo);
-			}
-		}
-		
+		//Sin id propio, el nombre del archivo podría ser de otra fila. Primero la fila: si falla, conserva sus archivos.
 		if($id_alta && $orm->eliminarFila($id_alta)){
+			foreach($this->a_subidas_guardadas as $s_archivo){
+				if(!@unlink($s_archivo) && file_exists($s_archivo)){
+					error_log("CFW: no se pudo borrar ".$s_archivo." al deshacer el alta en ".$orm->tabla." (id: ".(int)$id_alta.")");
+				}
+			}
 			$tplmsg->vars["text"] = t("text_alta_deshecha",array("elemento" => $this->singular)).$tplmsg->vars["text"];
 		}else{
 			error_log("CFW: no se pudo deshacer el alta en ".$orm->tabla." (id: ".(int)$id_alta.")");
@@ -846,14 +859,38 @@ class AdminHelper extends Page implements PaginaAdmin{
 	}//fun
 	
 	
+	//Devuelve false si alguna no se guardó, con los motivos del ORM en a_errores_categorias. Sin limpiar las anteriores no añade ninguna.
 	protected function guardarCategorias($id,$a_data){
 		$cat = new $this->categorias_orm();
+		$this->a_errores_categorias = array();
 		
-		$cat->limpiarCategorias($id);
+		$b_ok = $cat->limpiarCategorias($id);
 		
-		foreach((array)$a_data as $categoria){
-			$cat->addCat($id,$categoria);
+		if($b_ok){
+			foreach((array)$a_data as $categoria){
+				if(!$cat->addCat($id,$categoria)){
+					$b_ok = false;
+				}
+			}
 		}
+		if(!$b_ok){
+			$this->a_errores_categorias = array_values(array_unique((array)$cat->errores));
+		}
+		$cat->cerrar();
+		return $b_ok;
+	}
+	
+	//Solo con un false explícito: un guardarCategorias redefinido que no devuelva nada no avisa.
+	private function avisarCategorias($b_ok,$tplmsg){
+		if($b_ok !== false){
+			return;
+		}
+		$s_error = count($this->a_errores_categorias) >= 1 ? implode(" ",$this->a_errores_categorias) : t("text_hubo_error");
+		$tplmsg->vars["color"] = "Red";
+		if(!isset($tplmsg->vars["text"])){
+			$tplmsg->vars["text"] = "";
+		}
+		$tplmsg->vars["text"] .= " ".t("text_categorias_problema",array("error" => $s_error));
 	}
 	
 }//class

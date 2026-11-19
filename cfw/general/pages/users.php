@@ -169,6 +169,7 @@ class users extends Page implements PaginaAdmin{
 		$s_action = "form/save";
 		$a_values = array();
 		$b_edicion = false;
+		$b_sin_fila = false;
 		if($id != ""){
 			if($orm->getByIdAdmin($id)){
 				$b_edicion = true;
@@ -176,6 +177,9 @@ class users extends Page implements PaginaAdmin{
 				$orm->campos_form["id"] = array("title" => "","name" => "id","type" => "hidden");
 				$orm->campos_form["borrado"] = array("title" => t("text_campo_borrado"),"name" => "borrado","type" => "radio", "opciones" => array(t("text_si") => "1", t("text_no") => "0"));
 				$s_action = "edit/".$id."/save";
+			}else{
+				//Borrado o inexistente: sin fila no se pinta el formulario, que sería un alta.
+				$b_sin_fila = true;
 			}
 		}elseif(count($_POST) >= 1 && $b_insert_error){
 			$a_values = $_POST;
@@ -204,7 +208,11 @@ class users extends Page implements PaginaAdmin{
 		$tpl->vars["titulo"] = $this->titulo_form;
 		$this->vars["page_title"] = $this->titulo_form;
 		
-		$tpl->vars["content"] = $s_msg.$this->prepararCifrado().(($b_cifrado || $b_edicion) ? $form->getForm() : "");
+		if($b_sin_fila){
+			$tpl->vars["content"] = $s_msg."<p>".t("text_usuario_no_encontrado")."</p><p><a href='".$this->config["urlbase"]."admin/users'>".t("text_enlace_lista")."</a></p>";
+		}else{
+			$tpl->vars["content"] = $s_msg.$this->prepararCifrado().(($b_cifrado || $b_edicion) ? $form->getForm() : "");
+		}
 			
 		$this->show($tpl);
 	}

@@ -11,8 +11,10 @@ CREATE TABLE `usuarios` (
   `visitas` int(9) NOT NULL DEFAULT '0',
   `activo` int(1) NOT NULL DEFAULT '0',
   `borrado` int(1) NOT NULL DEFAULT '0',
+  `email_activo` varchar(255) GENERATED ALWAYS AS (IF(`borrado` = 0, `email`, NULL)) STORED,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `email` (`email`)
+  UNIQUE KEY `email_activo` (`email_activo`),
+  KEY `email` (`email`)
 ) ENGINE=MyISAM AUTO_INCREMENT=0 DEFAULT CHARSET=utf8;
 
 

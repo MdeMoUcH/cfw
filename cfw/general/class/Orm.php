@@ -138,13 +138,29 @@ class Orm extends Bbdd
 		return $this->select("SELECT * FROM ".$this->tabla." WHERE ".$s_where." AND borrado = 0");
 	}
 	
+	//Una página no válida es la 1; una que desbordaría el LIMIT no puede tener filas: false sin consultar.
 	function getAllPaginado($pag,$elementos){
-		$elementos = max(1,(int)$elementos);
-		$limit_1 = (max(1,(int)$pag)-1) * $elementos;
-		$limit_2 = $elementos;
+		$i_pag = $this->enteroPositivo($pag);
+		$i_elementos = $this->enteroPositivo($elementos);
+		if($i_pag - 1 > intdiv(PHP_INT_MAX, $i_elementos)){
+			$this->resultado = array();
+			return false;
+		}
+		$limit_1 = ($i_pag - 1) * $i_elementos;
+		$limit_2 = $i_elementos;
 		$s_sql = "SELECT * FROM ".$this->tabla." WHERE borrado = 0 ORDER BY id LIMIT ".$limit_1.",".$limit_2."";
 		//die($s_sql);
 		return $this->select($s_sql);
+	}
+	
+	//Como Page::datosPaginacion: solo dígitos (los que no caben, PHP_INT_MAX); lo demás, 1. A diferencia de datosPaginacion, un float entero cuenta como sus dígitos.
+	private function enteroPositivo($valor){
+		if(is_float($valor) && is_finite($valor) && floor($valor) == $valor){
+			$s_valor = sprintf("%.0f", $valor);
+		}else{
+			$s_valor = is_scalar($valor) ? (string)$valor : "";
+		}
+		return ctype_digit($s_valor) ? max(1, (int)$s_valor) : 1;
 	}
 	
 	function getTotal(){
@@ -153,6 +169,23 @@ class Orm extends Bbdd
 		}else{
 			return 0;
 		}
+	}
+	
+	
+	//Si la fila $id (ya filtrado) existe y no está borrada. Sin ella, text_fila_no_editable, salvo que haya fallado la consulta. No cambia resultado.
+	//Aviso: $s_columna y $s_tabla van tal cual en el SQL. Solo valores de la clase, nunca datos del usuario.
+	protected function filaEditable($s_columna, $id, $s_tabla = ""){
+		if($s_tabla == ""){
+			$s_tabla = $this->tabla;
+		}
+		$a_resultado = $this->resultado;
+		$i_errores = count($this->errores);
+		$b_existe = $this->ejecutarConsulta("SELECT ".$s_columna." FROM ".$s_tabla." WHERE ".$s_columna." = ".$id." AND borrado = 0");
+		$this->resultado = $a_resultado;
+		if(!$b_existe && count($this->errores) == $i_errores){
+			$this->errores[] = t("text_fila_no_editable");
+		}
+		return $b_existe;
 	}
 	
 	
@@ -184,7 +217,10 @@ class Orm extends Bbdd
 			$this->errores[] = t("text_sin_datos_actualizar");
 			return false;
 		}
-		$s_sql = "UPDATE ".$this->tabla." SET ".$s_query." WHERE id = ".$id."";
+		if(!$this->filaEditable("id", $id)){
+			return false;
+		}
+		$s_sql = "UPDATE ".$this->tabla." SET ".$s_query." WHERE id = ".$id." AND borrado = 0";
 		
 		return $this->ejecutarInsertUpdate($s_sql);
 	}
@@ -238,8 +274,11 @@ class Orm extends Bbdd
 			$this->errores[] = t("text_valor_no_valido");
 			return false;
 		}
+		if(!$this->filaEditable($this->primarykey, $id)){
+			return false;
+		}
 		
-		$s_sql = "UPDATE ".$this->tabla." SET ".$campo." = '".$s_valor."' WHERE ".$this->primarykey." = ".$id."";
+		$s_sql = "UPDATE ".$this->tabla." SET ".$campo." = '".$s_valor."' WHERE ".$this->primarykey." = ".$id." AND borrado = 0";
 		
 		return $this->ejecutarInsertUpdate($s_sql);
 	}
@@ -294,8 +333,18 @@ class Orm extends Bbdd
 	}
 	
 	
+	//La fila principal está en tabla_otra y la categoría en tabla. Sin tabla_otra no se puede comprobar: no se escribe.
+	private function filaPrincipalEditable($id){
+		if($this->tabla_otra == ""){
+			error_log("CFW: ".get_class($this)." sin tabla_otra: no se comprueba la fila de las categorías");
+			$this->errores[] = t("text_fila_no_editable");
+			return false;
+		}
+		return $this->filaEditable("id", $id, $this->tabla_otra);
+	}
+	
 	function limpiarCategorias($id){
-		if(($id = $this->filtroId($id)) === false){
+		if(($id = $this->filtroId($id)) === false || !$this->filaPrincipalEditable($id)){
 			return false;
 		}
 		$s_sql = "DELETE FROM ".$this->tabla_cruce." WHERE ".$this->cruce_id." = ".$id."";
@@ -304,7 +353,14 @@ class Orm extends Bbdd
 	}
 	
 	function addCat($id,$id_cat){
-		if(($id = $this->filtroId($id)) === false || ($id_cat = $this->filtroId($id_cat)) === false){
+		if(($id = $this->filtroId($id)) === false || ($id_cat = $this->filtroId($id_cat)) === false || !$this->filaPrincipalEditable($id)){
+			return false;
+		}
+		if(!$this->filaEditable("id", $id_cat)){
+			if(end($this->errores) === t("text_fila_no_editable")){
+				array_pop($this->errores);
+				$this->errores[] = t("text_categoria_no_disponible");
+			}
 			return false;
 		}
 		$s_sql = "INSERT INTO ".$this->tabla_cruce." (".$this->cruce_id.",fk_id_categoria) VALUES (".$id.",".$id_cat.")";
