@@ -21,6 +21,7 @@ git push -u origin main
 ```
 - `git switch -c main` hace falta porque clonar en una etiqueta deja el HEAD desacoplado: sin una rama, los commits del sitio no quedan en ninguna.
 - El repositorio del sitio debe estar vacío, sin README ni licencia iniciales, o el `push` falla.
+- El clon trae `LICENSE`, la licencia MIT de CFW: consérvalo. La licencia del sitio, si la tiene, va en otro archivo.
 - Lo propio del sitio va en `cfw/specific/` y en los archivos que el sitio adapta fuera de ella (ver «Qué se puede redefinir en `specific`» y «Qué queda fuera de `specific`» en [README.md](README.md)). No cambies `cfw/general/`: cada cambio ahí choca con los de CFW al actualizar. Cómo se construye sobre CFW está en [DESARROLLO.md](DESARROLLO.md).
 - La configuración va en `config/`: `config/config.ini` lleva lo que es igual en todos los servidores, lo edita el sitio y se versiona; lo de cada servidor, con las contraseñas, va en `config/config-servidor.ini`, que no se versiona (ver «Puesta en marcha»).
 - Después, sigue con «Puesta en marcha».

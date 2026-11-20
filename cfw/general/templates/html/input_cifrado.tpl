@@ -1,1 +1,1 @@
-<input id="{name}" type="password" data-cifrar="{name}" autocomplete="off" {class}/>
+<input id="{id}" type="password" data-cifrar="{name}" autocomplete="off" {class}/>

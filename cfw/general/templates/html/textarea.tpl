@@ -1,1 +1,1 @@
-<textarea id="{name}" name="{name}" rows="{rows}" cols="{cols}" {class} {onclick}>{value}</textarea>
+<textarea id="{id}" name="{name}" rows="{rows}" cols="{cols}" {class} {onclick}>{value}</textarea>

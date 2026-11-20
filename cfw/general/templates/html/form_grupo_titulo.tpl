@@ -1,1 +1,1 @@
-<span id="{id}_grupo">{title}</span>
+<span id="{id_grupo}">{title}</span>

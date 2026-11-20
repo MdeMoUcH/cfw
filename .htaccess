@@ -14,6 +14,10 @@ RewriteRule (^|/)\.(?!well-known/) - [F,L]
 RewriteRule ^cfw(/|$) - [F,NC,L]
 RewriteRule ^(config|data)(/|$) - [F,NC,L]
 RewriteRule \.(ini|sql|tpl|md)$ - [F,NC,L]
+#Una ruta con // (segmento vacío) da 404; solo en la petición original, no en el ErrorDocument ni tras reescribir.
+RewriteCond %{ENV:REDIRECT_STATUS} ^$
+RewriteCond %{THE_REQUEST} ^\S+\s+(?:[a-z][a-z0-9+.-]*://[^/?\s]*)?/(?:[^?\s]*/)?/ [NC]
+RewriteRule ^ - [R=404,L]
 
 
 ErrorDocument  404  /404/
@@ -24,14 +28,11 @@ Require all denied
 </Files>
 
 
-RewriteRule ^admin/(.*)/(.*)/(.*)/(.*)/ /index.php?uno=$1&dos=$2&tres=$3&cuatro=$4
-RewriteRule ^admin/(.*)/(.*)/(.*)/(.*) /index.php?uno=$1&dos=$2&tres=$3&cuatro=$4
-RewriteRule ^admin/(.*)/(.*)/(.*)/ /index.php?uno=$1&dos=$2&tres=$3
-RewriteRule ^admin/(.*)/(.*)/(.*) /index.php?uno=$1&dos=$2&tres=$3
-RewriteRule ^admin/(.*)/(.*)/ /index.php?uno=$1&dos=$2
-RewriteRule ^admin/(.*)/(.*) /index.php?uno=$1&dos=$2
-RewriteRule ^admin/(.*)/ /index.php?uno=$1
-RewriteRule ^admin/(.*) /index.php?uno=$1
+#Rutas de admin: de uno a cuatro segmentos no vacíos, con o sin barra final. Con más, 404. [B] escapa los segmentos en la query.
+RewriteRule ^admin/([^/]+)/([^/]+)/([^/]+)/([^/]+)/?$ /index.php?uno=$1&dos=$2&tres=$3&cuatro=$4 [B]
+RewriteRule ^admin/([^/]+)/([^/]+)/([^/]+)/?$ /index.php?uno=$1&dos=$2&tres=$3 [B]
+RewriteRule ^admin/([^/]+)/([^/]+)/?$ /index.php?uno=$1&dos=$2 [B]
+RewriteRule ^admin/([^/]+)/?$ /index.php?uno=$1 [B]
 RewriteRule ^admin/?$ /index.php
 
 

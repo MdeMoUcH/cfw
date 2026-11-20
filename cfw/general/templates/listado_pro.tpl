@@ -69,23 +69,9 @@ if(window.TableKit && TableKit.Editable && TableKit.Editable.CellEditor){
 				alert(s_msg);
 			}, 0);
 		};
-		var cfw_on_failure = copia.onFailure;
-		copia.onFailure = function(r){
-			var s_msg = {error_edicion_json};
-			//El 400 trae el motivo escapado; DOMParser lo decodifica sin ejecutar ni cargar nada.
-			if(r.status == 400){
-				s_msg = new DOMParser().parseFromString(r.responseText, 'text/html').documentElement.textContent;
-			}else if(r.status == 401){
-				s_msg = {sesion_caducada_json};
-			}
-			cfw_restaurar(s_msg);
-			if(typeof cfw_on_failure === 'function'){
-				cfw_on_failure(r);
-			}
-		};
+		//Clasifica la respuesta: con un error restaura la celda y devuelve false; si no, deja pintarla.
 		//Prototype da por buenos el estado 0 (sin respuesta) y la respuesta tras una redirección (el login).
-		var cfw_on_success = copia.onSuccess;
-		copia.onSuccess = function(r){
+		var cfw_tratar = function(r){
 			var s_msg = '';
 			if(!r.status){
 				s_msg = {error_conexion_json};
@@ -97,19 +83,72 @@ if(window.TableKit && TableKit.Editable && TableKit.Editable.CellEditor){
 						s_msg = {sesion_caducada_json};
 					}
 				}catch(e){}
+				if(s_msg === '' && !r.request.success()){
+					s_msg = {error_edicion_json};
+					//El 400 trae el motivo escapado; DOMParser lo decodifica sin ejecutar ni cargar nada.
+					if(r.status == 400){
+						s_msg = new DOMParser().parseFromString(r.responseText, 'text/html').documentElement.textContent;
+					}else if(r.status == 401){
+						s_msg = {sesion_caducada_json};
+					}
+				}
 			}
 			if(s_msg !== ''){
 				cfw_restaurar(s_msg);
+				return false;
+			}
+			b_pintar = true;
+			return true;
+		};
+		var cfw_on_failure = copia.onFailure;
+		copia.onFailure = function(r, json){
+			cfw_tratar(r);
+			if(typeof cfw_on_failure === 'function'){
+				cfw_on_failure(r, json);
+			}
+		};
+		var cfw_on_success = copia.onSuccess;
+		copia.onSuccess = function(r, json){
+			if(!cfw_tratar(r)){
 				if(typeof cfw_on_failure === 'function'){
-					cfw_on_failure(r);
+					cfw_on_failure(r, json);
 				}
 				return;
 			}
-			b_pintar = true;
 			if(typeof cfw_on_success === 'function'){
-				cfw_on_success(r);
+				cfw_on_success(r, json);
 			}
 		};
+		//Un on<estado> propio tiene prioridad en Prototype sobre onSuccess y onFailure: se comprueba antes de llamarlo.
+		Object.keys(copia).forEach(function(s_clave){
+			var propio = copia[s_clave];
+			if(/^on\d+$/.test(s_clave) && typeof propio === 'function'){
+				copia[s_clave] = function(r, json){
+					cfw_tratar(r);
+					propio(r, json);
+				};
+			}
+		});
+		//tablekit.js pisa onComplete: uno propio se llama después del suyo. Solo en la copia.
+		var cfw_on_complete = copia.onComplete;
+		if(typeof cfw_on_complete === 'function'){
+			var cfw_complete_tablekit = null;
+			Object.defineProperty(copia, 'onComplete', {
+				enumerable: true,
+				configurable: true,
+				get: function(){
+					return function(r, json){
+						if(typeof cfw_complete_tablekit === 'function'){
+							cfw_complete_tablekit(r, json);
+						}
+						cfw_on_complete(r, json);
+					};
+				},
+				set: function(f){
+					cfw_complete_tablekit = f;
+				}
+			});
+		}
 		var cfw_insertion = copia.insertion;
 		copia.insertion = function(receiver, s_texto){
 			if(!b_pintar){

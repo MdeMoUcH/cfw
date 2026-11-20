@@ -14,6 +14,10 @@ class Form //extends App
 {
 	public $vars;
 	public $a_default_buttons;
+	//Ids ya usados en la petición; se inicializa con los ids literales de las plantillas.
+	private static $a_ids = null;
+	private $s_id_csrf = null;
+	private $s_id_form = null;
 	
 	function __construct(){
 		//parent::__construct();
@@ -48,7 +52,10 @@ class Form //extends App
 		//En GET no se añade: el token acabaría en la URL.
 		$this->vars["csrf_input"] = "";
 		if(strtoupper($method) == "POST" && isset($_SESSION["csrf"])){
-			$this->vars["csrf_input"] = $this->getInput("csrf","hidden",$_SESSION["csrf"]);
+			if($this->s_id_csrf === null){
+				$this->s_id_csrf = self::idUnico("csrf");
+			}
+			$this->vars["csrf_input"] = $this->input("csrf","hidden",$_SESSION["csrf"],"","",false,"",$this->s_id_csrf);
 		}
 	}
 	
@@ -60,7 +67,14 @@ class Form //extends App
 	function getForm(){		
 		$tpl = new Template("html/form");
 		
-		return $tpl->get($this->vars);
+		$s_nombre = isset($this->vars["name"]) && is_scalar($this->vars["name"]) ? (string)$this->vars["name"] : "";
+		if($this->s_id_form === null){
+			$this->s_id_form = self::idUnico($s_nombre !== "" ? $s_nombre : "form");
+		}
+		$a_vars = $this->vars;
+		$a_vars["name"] = escapar($s_nombre);
+		$a_vars["id"] = escapar($this->s_id_form);
+		return $tpl->get($a_vars);
 	}
 	
 	function get(){
@@ -68,11 +82,13 @@ class Form //extends App
 	}
 	
 	function getInput($name = "", $type = "", $value = "", $onclick = "", $class = "", $checked = false, $text = "", $id = ""){
+		return $this->input($name, $type, $value, $onclick, $class, $checked, $text, self::idUnico($id === "" ? $name : $id));
+	}
+	
+	//Como getInput, con el id ya reservado.
+	private function input($name, $type, $value, $onclick, $class, $checked, $text, $id){
 		$tpl = new Template("html/input");
 		
-		if($id === ""){
-			$id = $name;
-		}
 		$tpl->vars["id"] = escapar($id);
 		$tpl->vars["name"] = escapar($name);
 		$tpl->vars["type"] = escapar($type);
@@ -109,7 +125,13 @@ class Form //extends App
 	
 	
 	function getTextarea($name = "", $value = "", $onclick = "", $rows = "", $cols = "", $class = "", $text = ""){
+		return $this->textarea($name, $value, $onclick, $rows, $cols, $class, $text, self::idUnico($name));
+	}
+	
+	//Como getTextarea, con el id ya reservado.
+	private function textarea($name, $value, $onclick, $rows, $cols, $class, $text, $id){
 		$tpl = new Template("html/textarea");
+		$tpl->vars["id"] = escapar($id);
 		$tpl->vars["name"] = escapar($name);
 		$tpl->vars["value"] = escapar($value);
 		$tpl->vars["text"] = $text;
@@ -164,8 +186,9 @@ class Form //extends App
 				break;
 			case "textarea":
 					$tpl = new Template("html/form_row_textarea");
-					$tpl->vars["title"] = $this->etiqueta($title,$name);
-					$tpl->vars["textarea"] = $this->getTextarea($name,$value,$onclick,"","",$class);			
+					$s_id = self::idUnico($name);
+					$tpl->vars["title"] = $this->etiqueta($title,$s_id);
+					$tpl->vars["textarea"] = $this->textarea($name,$value,$onclick,"","",$class,"",$s_id);			
 					return $tpl->get();
 				break;
 			case "checkbox_single":
@@ -203,7 +226,9 @@ class Form //extends App
 			case "radio":
 					$tpl = new Template("html/form_row");
 					$tplgrupo = new Template("html/form_grupo_titulo");
+					$s_id_grupo = self::idUnico($name."_grupo");
 					$tplgrupo->vars["id"] = escapar($name);
+					$tplgrupo->vars["id_grupo"] = escapar($s_id_grupo);
 					$tplgrupo->vars["title"] = $title;
 					$tpl->vars["title"] = $tplgrupo->get();
 					$s_opciones = "";
@@ -244,6 +269,7 @@ class Form //extends App
 					//Las opciones van en un grupo con el título como nombre.
 					$tplgrupo = new Template("html/form_grupo");
 					$tplgrupo->vars["id"] = escapar($name);
+					$tplgrupo->vars["id_grupo"] = escapar($s_id_grupo);
 					$tplgrupo->vars["input"] = $s_opciones;
 					$tpl->vars["input"] = $tplgrupo->get();
 					
@@ -255,7 +281,8 @@ class Form //extends App
 			case "select_dinamico_desactivado":
 			
 					$tpl = new Template("html/select");
-					$tpl->vars["id"] = escapar($name);
+					$s_id = self::idUnico($name);
+					$tpl->vars["id"] = escapar($s_id);
 					$tpl->vars["name"] = escapar($name);
 					$tpl->vars["options"] = "";
 					if($type == "select_dinamico_desactivado" || $type == "select_desactivado"){
@@ -295,7 +322,7 @@ class Form //extends App
 					$tpl->vars["options"] = $tpl_aux->get().$tpl->vars["options"];
 					
 					$tpl_last = new Template("html/form_row");
-					$tpl_last->vars["title"] = $this->etiqueta($title,$name);
+					$tpl_last->vars["title"] = $this->etiqueta($title,$s_id);
 					$tpl_last->vars["input"] = $tpl->get();
 					
 					return $tpl_last->get();
@@ -306,8 +333,10 @@ class Form //extends App
 			case "password_cifrado":
 					//Sin name ni value: lo envía cifrado js/cifrado.js (Page::prepararCifrado).
 					$tpl = new Template("html/form_row");
-					$tpl->vars["title"] = $this->etiqueta($title,$name);
+					$s_id = self::idUnico($name);
+					$tpl->vars["title"] = $this->etiqueta($title,$s_id);
 					$tplinput = new Template("html/input_cifrado");
+					$tplinput->vars["id"] = escapar($s_id);
 					$tplinput->vars["name"] = escapar($name);
 					$tplinput->vars["class"] = "";
 					if($class != ""){
@@ -323,9 +352,10 @@ class Form //extends App
 		$tpl = new Template("html/form_row".$row_type);
 		
 		if($type != ''){
+			$s_id = self::idUnico($name);
 			//Las filas _colspan (ocultos y botones) no pintan el título.
-			$tpl->vars["title"] = ($row_type === "") ? $this->etiqueta($title,$name) : $title;
-			$tpl->vars["input"] = $this->getInput($name, $type, $value, $onclick, $class);
+			$tpl->vars["title"] = ($row_type === "") ? $this->etiqueta($title,$s_id) : $title;
+			$tpl->vars["input"] = $this->input($name, $type, $value, $onclick, $class, false, "", $s_id);
 		}else{
 			$tpl->vars["title"] = '<p style="margin-top:25px;text-decoration: underline;">'.$title.'</p>';
 			$tpl->vars["input"] = '<p style="height:50px;"></p>';
@@ -334,14 +364,14 @@ class Form //extends App
 	}
 	
 	
-	//El título como etiqueta del campo con id $name; $title se pinta sin escapar, como hasta ahora.
-	//Sin título o sin name no hay campo al que asociarlo: se devuelve el título tal cual.
-	private function etiqueta($title, $name){
-		if($title == "" || $name == ""){
+	//El título como etiqueta del campo con id $id; $title se pinta sin escapar, como hasta ahora.
+	//Sin título o sin id (campo sin name) no hay campo al que asociarlo: se devuelve el título tal cual.
+	private function etiqueta($title, $id){
+		if($title == "" || $id == ""){
 			return $title;
 		}
 		$tpllabel = new Template("html/label");
-		$tpllabel->vars["id"] = escapar($name);
+		$tpllabel->vars["id"] = escapar($id);
 		$tpllabel->vars["text"] = $title;
 		return $tpllabel->get();
 	}
@@ -383,6 +413,59 @@ class Form //extends App
 		$tpl->vars["content"] = $s_content;
 		
 		$this->vars["content"] = $tpl->get();
+	}
+	
+	
+	//Devuelve $s_base o, si ya está usado en la petición, el primero libre de <base>_2, <base>_3..., y lo anota.
+	//Sin base (campo sin name) no hay id que reservar.
+	protected static function idUnico($s_base){
+		$s_base = is_scalar($s_base) ? (string)$s_base : "";
+		if($s_base === ""){
+			return "";
+		}
+		if(self::$a_ids === null){
+			self::$a_ids = self::idsPlantillas();
+		}
+		$s_id = $s_base;
+		for($i = 2; isset(self::$a_ids[$s_id]); $i++){
+			$s_id = $s_base."_".$i;
+		}
+		self::$a_ids[$s_id] = true;
+		return $s_id;
+	}
+	
+	
+	//Ids literales (sin {variables}) de todas las plantillas de general y specific, se pinten o no: Form nunca los usa.
+	private static function idsPlantillas(){
+		$a_ids = array();
+		$conf = new AppConf();
+		foreach(array("cfw/general/templates", "cfw/specific/templates") as $s_carpeta){
+			$s_ruta = $conf->config["pathbase"].$s_carpeta;
+			if(!is_dir($s_ruta)){
+				continue;
+			}
+			try{
+				//Sin FOLLOW_SYMLINKS no entra en carpetas enlazadas; CATCH_GET_CHILD salta las que no se pueden leer.
+				$it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($s_ruta, FilesystemIterator::SKIP_DOTS), RecursiveIteratorIterator::LEAVES_ONLY, RecursiveIteratorIterator::CATCH_GET_CHILD);
+				foreach($it as $fichero){
+					if($fichero->isLink() || !$fichero->isFile() || $fichero->getExtension() !== "tpl"){
+						continue;
+					}
+					$s_plantilla = @file_get_contents($fichero->getPathname());
+					if($s_plantilla === false){
+						continue;
+					}
+					if(preg_match_all('#\bid=("[^"{]*"|\'[^\'{]*\')#', $s_plantilla, $a_coincidencias)){
+						foreach($a_coincidencias[1] as $s_id){
+							$a_ids[substr($s_id, 1, -1)] = true;
+						}
+					}
+				}
+			}catch(Exception $e){
+				continue;
+			}
+		}
+		return $a_ids;
 	}
 	
 }//class

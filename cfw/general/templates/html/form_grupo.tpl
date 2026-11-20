@@ -1,1 +1,1 @@
-<fieldset class="form_grupo" aria-labelledby="{id}_grupo">{input}</fieldset>
+<fieldset class="form_grupo" aria-labelledby="{id_grupo}">{input}</fieldset>
