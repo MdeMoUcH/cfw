@@ -164,7 +164,7 @@ class Form //extends App
 				break;
 			case "textarea":
 					$tpl = new Template("html/form_row_textarea");
-					$tpl->vars["title"] = $title;
+					$tpl->vars["title"] = $this->etiqueta($title,$name);
 					$tpl->vars["textarea"] = $this->getTextarea($name,$value,$onclick,"","",$class);			
 					return $tpl->get();
 				break;
@@ -202,8 +202,11 @@ class Form //extends App
 			case "checkbox":
 			case "radio":
 					$tpl = new Template("html/form_row");
-					$tpl->vars["title"] = $title;
-					$tpl->vars["input"] = "";
+					$tplgrupo = new Template("html/form_grupo_titulo");
+					$tplgrupo->vars["id"] = escapar($name);
+					$tplgrupo->vars["title"] = $title;
+					$tpl->vars["title"] = $tplgrupo->get();
+					$s_opciones = "";
 					
 					$n_opcion = 0;
 					foreach($opciones as $option=>$valueo){
@@ -235,8 +238,14 @@ class Form //extends App
 						/* !!! */
 						
 						
-						$tpl->vars["input"] .= $this->getInput($name_aux,$type,$valueo,$onclick,$class,$checked,"&nbsp;".escapar($option),$name."_".$n_opcion)."<br/>";
+						$s_opciones .= $this->getInput($name_aux,$type,$valueo,$onclick,$class,$checked,"&nbsp;".escapar($option),$name."_".$n_opcion)."<br/>";
 					}
+					
+					//Las opciones van en un grupo con el título como nombre.
+					$tplgrupo = new Template("html/form_grupo");
+					$tplgrupo->vars["id"] = escapar($name);
+					$tplgrupo->vars["input"] = $s_opciones;
+					$tpl->vars["input"] = $tplgrupo->get();
 					
 					return $tpl->get();
 				break;
@@ -286,7 +295,7 @@ class Form //extends App
 					$tpl->vars["options"] = $tpl_aux->get().$tpl->vars["options"];
 					
 					$tpl_last = new Template("html/form_row");
-					$tpl_last->vars["title"] = $title;
+					$tpl_last->vars["title"] = $this->etiqueta($title,$name);
 					$tpl_last->vars["input"] = $tpl->get();
 					
 					return $tpl_last->get();
@@ -297,7 +306,7 @@ class Form //extends App
 			case "password_cifrado":
 					//Sin name ni value: lo envía cifrado js/cifrado.js (Page::prepararCifrado).
 					$tpl = new Template("html/form_row");
-					$tpl->vars["title"] = $title;
+					$tpl->vars["title"] = $this->etiqueta($title,$name);
 					$tplinput = new Template("html/input_cifrado");
 					$tplinput->vars["name"] = escapar($name);
 					$tplinput->vars["class"] = "";
@@ -314,13 +323,27 @@ class Form //extends App
 		$tpl = new Template("html/form_row".$row_type);
 		
 		if($type != ''){
-			$tpl->vars["title"] = $title;
+			//Las filas _colspan (ocultos y botones) no pintan el título.
+			$tpl->vars["title"] = ($row_type === "") ? $this->etiqueta($title,$name) : $title;
 			$tpl->vars["input"] = $this->getInput($name, $type, $value, $onclick, $class);
 		}else{
 			$tpl->vars["title"] = '<p style="margin-top:25px;text-decoration: underline;">'.$title.'</p>';
 			$tpl->vars["input"] = '<p style="height:50px;"></p>';
 		}
 		return $tpl->get();
+	}
+	
+	
+	//El título como etiqueta del campo con id $name; $title se pinta sin escapar, como hasta ahora.
+	//Sin título o sin name no hay campo al que asociarlo: se devuelve el título tal cual.
+	private function etiqueta($title, $name){
+		if($title == "" || $name == ""){
+			return $title;
+		}
+		$tpllabel = new Template("html/label");
+		$tpllabel->vars["id"] = escapar($name);
+		$tpllabel->vars["text"] = $title;
+		return $tpllabel->get();
 	}
 	
 	

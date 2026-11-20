@@ -200,6 +200,14 @@ select:disabled{
 	cursor:not-allowed;
 }
 
+/* Grupos de radios y casillas de Form: sin el borde del fieldset */
+fieldset.form_grupo{
+	border:0;
+	margin:0;
+	padding:0;
+	min-width:0;
+}
+
 /* Tablas de formulario (#content_m para ganar a tablas.css) */
 #content_m form table{
 	width:100%;

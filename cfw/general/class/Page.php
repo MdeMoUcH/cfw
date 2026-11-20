@@ -65,7 +65,7 @@ class Page extends App
 		//Los exit cortan la petición aunque una subclase redefina redirigir o showError sin terminar.
 		if(!$this->session->isUserLogged() || ($b_admin && !$this->session->isUserAdmin()))
 		{
-			$this->redirigir($s_destino);
+			$this->negarSesion($s_destino);
 			exit;
 		}//if
 		
@@ -85,7 +85,7 @@ class Page extends App
 		if(!$a_usuario || ($b_admin && $a_usuario["fk_tipo_usuario"] != 1))
 		{
 			$this->session->setUserOut();
-			$this->redirigir($s_destino);
+			$this->negarSesion($s_destino);
 			exit;
 		}//if
 		
@@ -99,6 +99,20 @@ class Page extends App
 			$this->b_admin_revalidado = true;
 		}//if
 	}//fun revalidarSesion
+	
+	
+	//A un XHR (X-Requested-With) se le responde 401: si siguiera la redirección, recibiría el login.
+	private function negarSesion($s_destino)
+	{
+		if(strcasecmp((string)@$_SERVER["HTTP_X_REQUESTED_WITH"], "XMLHttpRequest") === 0)
+		{
+			http_response_code(401);
+			header("Content-Type: text/plain; charset=UTF-8");
+			die(escapar(t("text_sesion_caducada")));
+		}//if
+		
+		$this->redirigir($s_destino);
+	}//fun negarSesion
 	
 	
 	//final: una subclase no puede fingir que ha comprobado el administrador.

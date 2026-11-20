@@ -60,20 +60,69 @@ if(window.TableKit && TableKit.Editable && TableKit.Editable.CellEditor){
 		//tablekit.js escribe postBody y onComplete en las opciones, que son compartidas: se le pasa una copia.
 		var previas = op.ajaxOptions;
 		var copia = Object.extend({}, previas || TableKit.option('editAjaxOptions', table.id)[0]);
+		//Solo se pinta la respuesta en la celda si es un éxito de verdad.
+		var b_pintar = false;
+		var cfw_restaurar = function(s_msg){
+			//Ajax.Updater escribe en la celda después de onSuccess y onFailure.
+			setTimeout(function(){
+				cell.innerHTML = s_previo;
+				alert(s_msg);
+			}, 0);
+		};
 		var cfw_on_failure = copia.onFailure;
 		copia.onFailure = function(r){
 			var s_msg = {error_edicion_json};
 			//El 400 trae el motivo escapado; DOMParser lo decodifica sin ejecutar ni cargar nada.
 			if(r.status == 400){
 				s_msg = new DOMParser().parseFromString(r.responseText, 'text/html').documentElement.textContent;
+			}else if(r.status == 401){
+				s_msg = {sesion_caducada_json};
 			}
-			//Ajax.Updater escribe la respuesta en la celda después de onFailure.
-			setTimeout(function(){
-				cell.innerHTML = s_previo;
-				alert(s_msg);
-			}, 0);
+			cfw_restaurar(s_msg);
 			if(typeof cfw_on_failure === 'function'){
 				cfw_on_failure(r);
+			}
+		};
+		//Prototype da por buenos el estado 0 (sin respuesta) y la respuesta tras una redirección (el login).
+		var cfw_on_success = copia.onSuccess;
+		copia.onSuccess = function(r){
+			var s_msg = '';
+			if(!r.status){
+				s_msg = {error_conexion_json};
+			}else{
+				try{
+					var o_url = new URL(r.request.url, document.baseURI || window.location.href);
+					o_url.hash = '';
+					if(r.transport.responseURL && r.transport.responseURL !== o_url.href){
+						s_msg = {sesion_caducada_json};
+					}
+				}catch(e){}
+			}
+			if(s_msg !== ''){
+				cfw_restaurar(s_msg);
+				if(typeof cfw_on_failure === 'function'){
+					cfw_on_failure(r);
+				}
+				return;
+			}
+			b_pintar = true;
+			if(typeof cfw_on_success === 'function'){
+				cfw_on_success(r);
+			}
+		};
+		var cfw_insertion = copia.insertion;
+		copia.insertion = function(receiver, s_texto){
+			if(!b_pintar){
+				return;
+			}
+			if(cfw_insertion && Object.isString(cfw_insertion)){
+				var o_insertar = {};
+				o_insertar[cfw_insertion] = s_texto;
+				receiver.insert(o_insertar);
+			}else if(typeof cfw_insertion === 'function'){
+				cfw_insertion(receiver, s_texto);
+			}else{
+				receiver.update(s_texto);
 			}
 		};
 		op.ajaxOptions = copia;

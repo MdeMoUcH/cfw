@@ -96,6 +96,8 @@ class AdminHelper extends Page implements PaginaAdmin{
 			$tpl_aux->vars["confirmar_borrado_json"] = json_js(t("text_confirmar_borrado"));
 			$tpl_aux->vars["editfield_url_json"] = json_js($this->config["urlbase"]."admin/".$this->slug."/editfield");
 			$tpl_aux->vars["error_edicion_json"] = json_js(t("text_hubo_error"));
+			$tpl_aux->vars["error_conexion_json"] = json_js(t("text_edicion_sin_conexion"));
+			$tpl_aux->vars["sesion_caducada_json"] = json_js(t("text_sesion_caducada"));
 			$tpl_aux->vars["elementos"] = $tpl->vars["content"];
 			$tpl->vars["content"] = $tpl_aux->get();
 			
