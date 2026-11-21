@@ -10,26 +10,8 @@
 
 
 
-class ErrorCFW extends Page
-{	
-	function init($errores = array()){
-		$vars = array();
-		if(count($errores) >= 1)
-		{
-			$s_errores = "";
-			foreach($errores as $error)
-			{
-				$s_errores .= "<p>".escapar($error)."</p>";
-			}
-			$vars["error"] = $s_errores;
-		}
-		
-		$tpl = new Template("errores");
-		
-		$this->vars["menu"] = $this->get_menu("");
-		
-		$tpl->set_vars($vars);
-		
-		$this->show($tpl);
-	}//init
+
+//Un ErrorCFW propio en specific (class/Error.php) hereda de ErrorBaseCFW y redefine solo lo que cambia.
+class ErrorCFW extends ErrorBaseCFW
+{
 }//class

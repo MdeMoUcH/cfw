@@ -40,13 +40,13 @@ El `.htaccess` raíz solo define las rutas `/admin/...`, `/login` y `/login/logo
 | Carpeta | Efecto |
 |---|---|
 | `pages/` | Sustituye a la página de `general` con el mismo nombre, o añade una nueva. |
-| `class/` | Sustituye a la clase de `general` con el mismo nombre. Un `Form` propio hereda de `FormCFW`, que no se sustituye. |
-| `orm/` | Sustituye a `Usuarios` o `DinamicOrm`. |
+| `class/` | Sustituye a la clase de `general` con el mismo nombre. La clase propia hereda de su base `…CFW` (`PageCFW`, `FormCFW`…), que no se sustituye, o se copia entera. |
+| `orm/` | Sustituye a `Usuarios` o `DinamicOrm`. El ORM propio hereda de `UsuariosCFW` o `DinamicOrmCFW`, que no se sustituyen, o se copia entero. |
 | `templates/` | Sustituye a la plantilla con la misma ruta. |
 | `lang/<código>/` | Se fusiona clave a clave con los textos de `general`, con prioridad sobre ellos dentro del mismo idioma. |
 | `utils/functions.php` | Se carga además del de `general`. |
 
-La sustitución es del fichero entero y no hay carga automática de clases nuevas: ver «Dónde va cada cosa» en [DESARROLLO.md](DESARROLLO.md).
+En `pages/` y `templates/` la sustitución es del fichero entero; en `class/` y `orm/`, la clase propia redefine solo lo que cambia si hereda de su base. No hay carga automática de clases nuevas: ver «Dónde va cada cosa» en [DESARROLLO.md](DESARROLLO.md).
 
 ## Qué queda fuera de `specific`
 Cada proyecto también adapta estos ficheros, que no están en `specific`: `config/config.ini`, el `.htaccess` raíz, `db.sql`, `css/`, `js/` e `img/`. Al actualizar CFW en un proyecto hay que revisarlos a mano (ver [MIGRACION.md](MIGRACION.md)). `data/`, en la raíz, guarda lo que escribe la aplicación; su contenido no se versiona, salvo su `.htaccess`. La configuración del servidor, `config/config-servidor.ini`, la escribe la persona, va en `config/`, donde Apache solo puede leer, y tampoco se versiona.
@@ -100,7 +100,7 @@ Los md5 de versiones anteriores se convierten a `password_hash` en el primer log
 - Detrás de un proxy que termina el TLS, PHP no ve HTTPS y la cookie de sesión va sin `Secure`: ver «Despliegue» en [INSTALACION.md](INSTALACION.md).
 - No uses `AdminHelper::form` ni `AdminHelper::edit` con el ORM `Usuarios`: guardarían `pass` tal como llega, sin `pass_hash` ni las validaciones de `users`. `AdminHelper::editfield` tampoco aplica las de `users`: solo escribe columnas del formulario (`campos_form`, sin `pass` ni los tipos que no se editan en una celda, como `hidden`, `file` o `password_cifrado`), una por petición y a través de `update` del ORM. Pasa por las validaciones que haga ese `update` (con `Usuarios`, por ejemplo, el email repetido) y por las que `AdminHelper::edit` hace en la clase; no aplica las de `users` ni las que dependan de otras columnas de la fila, y no permite vaciar una celda.
 - El constructor de una página de `AdminHelper` o `PaginaAdmin` se ejecuta antes de que `index.php` compruebe el administrador: no debe hacer nada antes de comprobarlo (`parent::__construct()` en `AdminHelper`, `users` e `idiomas`; `exigirAdmin()` en una página propia que herede de `Page`; ver «Páginas» en [DESARROLLO.md](DESARROLLO.md)).
-- Esa comprobación protege de olvidos, no de código del sitio que la anule a propósito (con Reflection o sustituyendo `Page`, `AdminHelper` o `PaginaAdmin` en `specific/class`).
+- Esa comprobación protege de olvidos, no de código del sitio que la anule a propósito (con Reflection o copiando entero `Page`, `AdminHelper` o `PaginaAdmin` en `specific/class`).
 - El constructor de cualquier página se ejecuta antes de que `index.php` compruebe el token CSRF: una página no debe procesar POST en su constructor (ver «Páginas» en [DESARROLLO.md](DESARROLLO.md)).
 
 ## Librerías de terceros

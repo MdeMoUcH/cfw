@@ -10,31 +10,8 @@
 
 
 
-class App extends AppConf
+
+//Un App propio en specific hereda de AppCFW y redefine solo lo que cambia.
+class App extends AppCFW
 {
-	public $session;
-	
-	function __construct()
-	{
-		parent::__construct();
-		
-		$this->errores = array();
-		$this->session = new Msession($this->config);
-	}//__construct
-	
-	function addError($s_error)
-	{
-		if($s_error != "")
-		{
-			$this->errores[] = $s_error;
-		}
-	}//fun addError
-	
-	function showError($s_error = "")
-	{
-		$this->addError($s_error);
-		$page = new ErrorCFW();
-		$page->init($this->errores);
-		die();
-	}//fun showError
 }//class

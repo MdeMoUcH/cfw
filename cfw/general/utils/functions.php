@@ -67,7 +67,7 @@ function metodo_despachable($class, $method)
 		return false;
 	}//if
 	
-	return !in_array($reflection->getDeclaringClass()->getName(), array("AppConf", "App", "Page"));
+	return !in_array($reflection->getDeclaringClass()->getName(), array("AppConfCFW", "AppConf", "AppCFW", "App", "PageCFW", "Page"));
 }//fun metodo_despachable
 
 

@@ -10,47 +10,7 @@
 
 
 
-class DinamicOrm extends Orm
+//Un DinamicOrm propio en specific hereda de DinamicOrmCFW y redefine solo lo que cambia.
+class DinamicOrm extends DinamicOrmCFW
 {
-    function __construct()
-    {
-		parent::__construct();
-		
-		$this->tabla = "";
-		
-		$this->campos = array("id" => "num",
-							"name" => "text");
-							
-		$this->primarykey = "id";
-	
-		//Para los form:
-		$this->campos_form = array(
-								"name" => array("title" => t("text_campo_titulo"),
-									"name" => "titulo",
-									"type" => "text")
-							);
-							
-    }//constructor
-    
-    function setTabla($tabla)
-    {
-		$this->tabla = $tabla;
-	}
-	
-	function insert($a_array, $tabla = ""){
-		if(!isset($a_array["id"]) || $a_array["id"] === ""){
-			return parent::insert($a_array);
-		}
-		if(($id = $this->filtroId($a_array["id"])) === false){
-			return false;
-		}
-		$s_sql = "SELECT * FROM ".$this->tabla." WHERE id = '".$id."'";
-		
-		if($this->ejecutarConsulta($s_sql)){
-			$this->errores[] = t("text_error_generico");
-			return false;
-		}else{
-			return parent::insert($a_array);
-		}
-	}
 }//class

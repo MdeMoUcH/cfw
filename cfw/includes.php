@@ -31,14 +31,19 @@ $a_clases = array('AppConf','App','Msession','Cifrado','GestorIdiomas','Bbdd','T
 $a_orms = array('Usuarios','DinamicOrm');
 //die(getcwd());
 
-//Siempre la de general; un Form propio hereda de ella.
-require_once($s_path.'general/class/FormCFW.php');
+//Base de cada clase, siempre la de general; una clase propia en specific hereda de ella.
+$a_bases = array('Error' => 'ErrorBaseCFW', 'PaginaAdmin' => '');
 
 foreach($a_clases as $archivo){
+	$s_base = isset($a_bases[$archivo]) ? $a_bases[$archivo] : $archivo.'CFW';
+	if($s_base !== ''){
+		require_once($s_path.'general/class/'.$s_base.'.php');
+	}//if
 	my_require_once('class/'.$archivo);
 }//foreach
 
 foreach($a_orms as $archivo){
+	require_once($s_path.'general/orm/'.$archivo.'CFW.php');
 	my_require_once('orm/'.$archivo);
 }//foreach
 
