@@ -10,7 +10,7 @@ Reglas y trampas para construir o cambiar un sitio hecho con CFW. Para saber qu�
   - `class/` y `orm/`: sustituyen el fichero entero, pero solo los de la lista fija de `cfw/includes.php` (las clases de `cfw/general/class/` y los ORM `Usuarios` y `DinamicOrm`). Una clase o un ORM nuevos no se cargan solos: la página que los use hace `require_once` de su ruta.
   - `lang/<código>/`: no se copia nada. Los textos se fusionan clave a clave con los de `general` (ver «Textos»), y basta con poner las claves que cambian.
   - `utils/functions.php`: se carga además del de `general`, no lo sustituye. Definir en él una función que ya existe en `general` da un error fatal.
-- Una clase sustituida no puede heredar de la de `general`, porque se llaman igual: hay que copiarla entera o crear otra con nombre distinto. La copia deja de recibir las correcciones de CFW: anota en el sitio qué ficheros están copiados y por qué, y revísalos en cada actualización (paso 5 de «Actualizar un sitio» en [INSTALACION.md](INSTALACION.md)).
+- Una clase sustituida no puede heredar de la de `general`, porque se llaman igual: hay que copiarla entera o crear otra con nombre distinto. La excepción es `Form`: un `cfw/specific/class/Form.php` propio declara `class Form extends FormCFW` y redefine solo lo que cambia, y así recibe el registro de ids y el escapado (ver «Ids de `Form`»). `FormCFW` se carga siempre de `general` y no se puede sustituir. Si redefine `getForm` sin llamar a `parent::getForm()`, pierde el escapado y los ids; si redefine `setMethod` o `addContentTable` sin llamar a `parent::`, la segunda pintada no regenera el `csrf` o el contenido, y sus ids se repiten. Una clase copiada deja de recibir las correcciones de CFW: anota en el sitio qué ficheros están copiados y por qué, y revísalos en cada actualización (paso 5 de «Actualizar un sitio» en [INSTALACION.md](INSTALACION.md)).
 - Antes de copiar, mira si basta con una página nueva que herede de `Page` o de `AdminHelper`, unas claves en `specific/lang/` o una plantilla nueva.
 - Una mejora que sirva a cualquier sitio no se hace en el sitio: se propone para CFW.
 
@@ -41,8 +41,15 @@ Reglas y trampas para construir o cambiar un sitio hecho con CFW. Para saber qu�
 - Un listado propio se pagina con `datosPaginacion($orm, $pag, $filas)`, que devuelve `pagina` (ya acotada), `paginas` y `por_pagina`, `$orm->getAllPaginado($pagina, $por_pagina)` y `enlacesPaginacion($url, $pagina, $paginas)`, que devuelve los enlaces a `$url.<n>` ya pintados, o `""` con una sola página. `datosPaginacion` y `enlacesPaginacion` son métodos `protected` de `Page`, y `getAllPaginado`, de `Orm`; los usa también el listado de `AdminHelper`. `getAllPaginado` no acota a la última página: una página no válida da la primera, y una posterior a la última, aunque sea enorme, da `false` sin error.
 
 ## Ids de `Form`
-- Todo id que genera `Form` (el formulario, el `csrf`, los campos, las opciones de `radio` y `checkbox` y los grupos) es único en la petición: si ya está usado, lleva `_2`, `_3`…, y su `label for` y su `aria-labelledby` se ajustan. El `name` no cambia. Cada instancia reserva sus ids una vez: si pintas dos veces el mismo `Form` (`getForm()` repetido), sus ids se repiten; usa una instancia por formulario pintado.
-- Tampoco coincide nunca con un id literal de las plantillas de `cfw/general/templates` y `cfw/specific/templates`, aunque esa plantilla no se pinte en la página. Esos ids no cambian: cede `Form`. Los ids de plantilla con variables (`id="{…}"`) no cuentan.
+- Todo id que genera `Form` (el formulario, el `csrf`, los campos, las opciones de `radio` y `checkbox` y los grupos) es único en la petición: si ya está usado, lleva `_2`, `_3`…, y su `label for` y su `aria-labelledby` se ajustan. El `name` no cambia.
+- **Pintar dos veces**: cada `getForm()` da ids nuevos (formulario, `csrf`, campos, opciones y grupos), con `_2`, `_3`…, y el mismo `name`. Si el contenido se asigna a mano en `vars["content"]`, sus ids se reservaron al generarlo: para pintarlo dos veces, genéralo dos veces.
+- Tampoco coincide nunca con un id literal de las plantillas de `cfw/general/templates` y `cfw/specific/templates`, aunque esa plantilla no se pinte en la página. Esos ids no cambian: cede `Form`.
+- **Ids solo de dígitos**: `Form` no genera nunca uno: el nombre `5` sale como `5_2`, porque las filas del listado usan el id de la BD.
+- **Ids con variables** (`id="{…}"`) que no sean el número de una fila: no cuentan; resérvalos con `Form::reservarId`.
+- **`Form::reservarId($id)`**: para los ids que la página pinta en PHP. Llámalo antes de generar los formularios: no renombra lo ya generado, y devuelve `false` si el id ya estaba usado (o está vacío o es solo de dígitos).
+- **`Form::idUnico($base)`**: da un id libre para un elemento propio o para una plantilla que se pinta más de una vez, con `id="{id}"`. El valor se escapa con `escapar()` al asignarlo.
+- **Ids fijos repetidos entre plantillas o dentro de una misma**: `Form` no los renombra. Una plantilla con ids fijos se pinta una vez por página; si se repite, sus ids van en variables con `Form::idUnico`.
+- **Ids creados por JS**: `Form` no los puede conocer. Los de TableKit (`<id de la tabla>-cell-<n>`, su `-form` y `tablekit-table-<n>`) solo coinciden con un `name` de esa forma. Un JS propio debe usar ids que no sean `name` de ningún campo.
 - Por eso el botón por defecto (`name="button"`) suele salir como `button_2`, y un campo `email` o `id` como `email_2` o `id_2`.
 - Para usar un campo desde JS, búscalo por `name` dentro de su formulario (`form.querySelector('[name="email"]')`), o elige nombres que no estén en las plantillas.
 - El `name` del formulario (`$form->vars["name"]` o `setName`) se escapa al pintarlo: asígnalo sin escapar. Sin `name`, el formulario lleva `id="form"`.
@@ -158,6 +165,7 @@ Reglas y trampas para construir o cambiar un sitio hecho con CFW. Para saber qu�
 - Escribir en el `.htaccess` una regla pública sin anclar (`^contacto` en lugar de `^contacto/?$`), que coincide también con `/contactos` y otras URL que empiecen igual.
 - Contar con el valor por defecto de un argumento en un método que se llama por URL: el que falta llega como `null`, también con barra final, y como `""` solo con `index.php?...&tres=`.
 - Buscar desde JS o CSS un campo de `Form` por su `name` como id (`#email`): puede llevar `_2` (ver «Ids de `Form`»).
+- Copiar `Form` entero en `cfw/specific/class/` en lugar de heredar de `FormCFW`: la copia pierde los ids únicos, el escapado y las correcciones de CFW.
 - Escribir un `"` en un `.ini` de idioma, que lo invalida entero, o un `;` en un valor sin comillas.
 - Crear un ORM o una clase en `specific` y no hacer el `require_once`.
 - Definir en `specific/utils/functions.php` una función que ya existe en `general`: error fatal.

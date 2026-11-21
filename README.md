@@ -40,7 +40,7 @@ El `.htaccess` raíz solo define las rutas `/admin/...`, `/login` y `/login/logo
 | Carpeta | Efecto |
 |---|---|
 | `pages/` | Sustituye a la página de `general` con el mismo nombre, o añade una nueva. |
-| `class/` | Sustituye a la clase de `general` con el mismo nombre. |
+| `class/` | Sustituye a la clase de `general` con el mismo nombre. Un `Form` propio hereda de `FormCFW`, que no se sustituye. |
 | `orm/` | Sustituye a `Usuarios` o `DinamicOrm`. |
 | `templates/` | Sustituye a la plantilla con la misma ruta. |
 | `lang/<código>/` | Se fusiona clave a clave con los textos de `general`, con prioridad sobre ellos dentro del mismo idioma. |

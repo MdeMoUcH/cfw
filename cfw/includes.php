@@ -31,6 +31,9 @@ $a_clases = array('AppConf','App','Msession','Cifrado','GestorIdiomas','Bbdd','T
 $a_orms = array('Usuarios','DinamicOrm');
 //die(getcwd());
 
+//Siempre la de general; un Form propio hereda de ella.
+require_once($s_path.'general/class/FormCFW.php');
+
 foreach($a_clases as $archivo){
 	my_require_once('class/'.$archivo);
 }//foreach

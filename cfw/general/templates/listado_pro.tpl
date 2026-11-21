@@ -1,4 +1,3 @@
-<!--<table id="tabla" name="tabla" width="100%" class="sortable resizable editable tablekit">-->
 <div class="panel-body">
 <table id="tabla" name="tabla" width="100%" class="table table-striped">
 <thead>
