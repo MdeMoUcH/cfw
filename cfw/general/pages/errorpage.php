@@ -7,10 +7,6 @@
  * 
  ***************/
 
-class errorpage extends Page{	
-	
-	function init(){
-		http_response_code(404);
-		$this->showError(t("text_error_404"));
-	}
-}//class
+
+//Una página errorpage propia en specific/pages hereda de errorpageCFW (pages/base) y redefine solo lo que cambia.
+class errorpage extends errorpageCFW {}

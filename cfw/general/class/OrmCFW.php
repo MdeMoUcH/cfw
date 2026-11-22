@@ -154,7 +154,7 @@ class OrmCFW extends Bbdd
 	}
 	
 	//Como Page::datosPaginacion: solo dígitos (los que no caben, PHP_INT_MAX); lo demás, 1. A diferencia de datosPaginacion, un float entero cuenta como sus dígitos.
-	private function enteroPositivo($valor){
+	protected function enteroPositivo($valor){
 		if(is_float($valor) && is_finite($valor) && floor($valor) == $valor){
 			$s_valor = sprintf("%.0f", $valor);
 		}else{
@@ -334,7 +334,7 @@ class OrmCFW extends Bbdd
 	
 	
 	//La fila principal está en tabla_otra y la categoría en tabla. Sin tabla_otra no se puede comprobar: no se escribe.
-	private function filaPrincipalEditable($id){
+	protected function filaPrincipalEditable($id){
 		if($this->tabla_otra == ""){
 			error_log("CFW: ".get_class($this)." sin tabla_otra: no se comprueba la fila de las categorías");
 			$this->errores[] = t("text_fila_no_editable");

@@ -6,16 +6,30 @@ Reglas y trampas para construir o cambiar un sitio hecho con CFW. Para saber qu�
 - Lo propio va en `cfw/specific/`, que CFW trae solo con los `index.php` de protección: lo que el sitio cree ahí no choca con CFW al actualizar. La configuración no va aquí, sino en `config/` (ver «Configuración»).
 - El sitio adapta también ficheros fuera de `specific`, que sí pueden dar conflictos: `config/config.ini`, el `.htaccess` raíz, `db.sql`, `css/`, `js/` e `img/` (ver «Qué queda fuera de `specific`» en [README.md](README.md)).
 - Cada carpeta de `specific` actúa de una forma (ver «Qué se puede redefinir en `specific`» en [README.md](README.md)):
-  - `pages/` y `templates/`: un fichero con la misma ruta que uno de `general` lo sustituye entero; uno nuevo se añade.
+  - `pages/`: una página con el nombre de una de `general` la sustituye, y su clase hereda de la base de `general` para redefinir solo lo que cambia (ver «Redefinir una página de `general`»); una nueva se añade.
+  - `templates/`: un fichero con la misma ruta que uno de `general` lo sustituye entero; uno nuevo se añade.
   - `class/` y `orm/`: solo los de la lista fija de `cfw/includes.php` (las clases de `cfw/general/class/` y los ORM `Usuarios` y `DinamicOrm`). El fichero del sitio sustituye al de `general`, y su clase hereda de la base de `general` para redefinir solo lo que cambia (ver el punto siguiente). Una clase o un ORM nuevos no se cargan solos: la página que los use hace `require_once` de su ruta.
   - `lang/<código>/`: no se copia nada. Los textos se fusionan clave a clave con los de `general` (ver «Textos»), y basta con poner las claves que cambian.
   - `utils/functions.php`: se carga además del de `general`, no lo sustituye. Definir en él una función que ya existe en `general` da un error fatal.
 - **Redefinir una clase de `class/` u `orm/`.** Cada clase de la lista tiene en `general` una base con todo el código y una clase pública vacía que hereda de ella. El sitio declara en `cfw/specific/class/<Clase>.php` (u `orm/<Orm>.php`) la clase pública heredando de la base, y redefine solo lo que cambia:
   - `class AppConf extends AppConfCFW`, y así `App`, `Msession`, `Cifrado`, `GestorIdiomas`, `Bbdd`, `Template`, `Page`, `Orm`, `Form`, `AdminHelper`, `Usuarios` y `DinamicOrm` con `<Clase>CFW`.
   - `Error.php` declara `class ErrorCFW extends ErrorBaseCFW`: `ErrorCFW` ya es el nombre público, porque `Error` es una clase de PHP.
-  - `PaginaAdmin` es una interfaz vacía sin base: solo se puede copiar, y debe seguir vacía. Si se le añaden métodos, `users`, `idiomas` y `AdminHelper` dan un error fatal.
+  - `PaginaAdmin` es una interfaz vacía sin base: solo se puede copiar, y debe seguir vacía. Una base no aportaría nada, porque no tiene código que heredar, y si se le añaden métodos, `users`, `idiomas` y `AdminHelper` dan un error fatal.
   - Las bases se cargan siempre de `general` y no se sustituyen: un `specific/class/<Clase>CFW.php` se ignora. Sus nombres están reservados (ver [MIGRACION.md](MIGRACION.md)).
   - Una copia entera de la clase en `specific` también carga, como antes, pero deja de recibir las correcciones de CFW: anota en el sitio qué ficheros están copiados y por qué, y revísalos en cada actualización (paso 5 de «Actualizar un sitio» en [INSTALACION.md](INSTALACION.md)).
+- **Redefinir una página de `general`.** Las seis páginas de `cfw/general/pages/` (`main`, `login`, `cuenta`, `users`, `idiomas` y `errorpage`) tienen una base abstracta con todo el código en `cfw/general/pages/base/` (`mainCFW`, `loginCFW`, `cuentaCFW`, `usersCFW`, `idiomasCFW` y `errorpageCFW`), y la página pública queda vacía. El sitio declara en `cfw/specific/pages/<pagina>.php` la página heredando de su base, `class <pagina> extends <pagina>CFW`, y redefine solo lo que cambia:
+  - `main`: `$a_plantillas_permitidas`, que debe incluir `portada` (`/admin/main/init/<plantilla>` pinta las demás).
+  - `users`: `$class`, `$template`, `$paginacion`, `listado`, `datosFormulario` y `seQuedariaSinAcceso`.
+  - `idiomas`: `guardarOpciones`.
+  - `cuenta`: `formularioIdioma`, `guardarIdioma` y `bloquearCuenta`.
+  - `login`: `init` y `logout`.
+  - `errorpage`: `init`.
+  - Las bases se cargan siempre de `general/pages/base/` (un `cfw/specific/pages/base/` se ignora) y no se pueden abrir por URL ni ejecutar: no tienen archivo en `pages/` y son abstractas. Una página nueva con otro nombre también puede heredar de una base.
+  - El constructor llama siempre a `parent::__construct()`. Sin él, `users` e `idiomas` dan 403, y `cuenta` queda sin `exigirUsuario()`.
+  - `users` e `idiomas` implementan `PaginaAdmin` en su base, y la página del sitio lo hereda.
+  - Los métodos públicos de la base (`pag`, `id`, `form`, `edit`, `logout`) y los públicos que añada el sitio se pueden llamar por URL (ver «Páginas»).
+  - `login::init` y `cuenta::init` llevan el límite de intentos: redefinirlos sin `parent::` lo pierde.
+  - Una copia entera de la página en `specific` también carga, como antes, pero deja de recibir las correcciones de CFW.
 - **Clases intermedias.** Cada base hereda de la clase pública de su padre, no de su base:
   - `AppConf` → `App` → `Bbdd` → `Orm` → `Usuarios`, `DinamicOrm` y los ORM del sitio.
   - `App` → `Template`.
@@ -35,15 +49,19 @@ Reglas y trampas para construir o cambiar un sitio hecho con CFW. Para saber qu�
   - `Page`: `exigirUsuario`, `exigirAdmin` y `adminRevalidado` son `final`, y la revalidación es `private`: no se pueden redefinir.
   - `AdminHelper`: sin `parent::__construct()` no hay `exigirAdmin` y la página da 403. Un método público nuevo del `AdminHelper` del sitio se puede llamar por URL en todas las páginas que heredan de él: lo que no deba serlo va como `protected` o `private`.
   - `Usuarios` y `Msession`: los usan el login, la sesión y la revalidación de `Page`. Redefinirlos sin `parent::` debilita el login.
-  - `Bbdd`: las constantes `TIEMPO_*` se leen con `self::`, así que redefinirlas no cambia nada.
-  - `Cifrado`, `GestorIdiomas` y `Form`: sus llamadas internas usan `self::`. Redefinir un método estático solo cambia las llamadas desde fuera de la clase: `GestorIdiomas::activos()` sigue usando el `porDefecto()` de la base.
-  - Los métodos `private` de una base no se pueden llamar ni redefinir desde la clase del sitio.
+  - `Bbdd`: las constantes `TIEMPO_CONEXION` y `TIEMPO_LECTURA` (segundos) se leen con `static::`, así que se pueden redefinir en `Bbdd` o en un ORM. En `Usuarios` también cambian los tiempos de la revalidación de `Page`, que lo usa.
+  - `GestorIdiomas`: sus métodos públicos se llaman entre sí con `static::`, así que redefinir uno cambia también las llamadas internas (un `porDefecto()` propio cambia `activos()` y `actual()`). Un método redefinido debe devolver códigos de `disponibles()`: uno que no sea de dos letras minúsculas se ignora al leer los textos y al guardar las opciones, y en `actual()` y en el `lang` de `<html>` se cambia por el de `porDefecto()`, o por `es` si tampoco lo es. Sus propiedades y métodos `private` siguen con `self::`.
+  - `Cifrado` y `Form`: sus llamadas internas siguen con `self::`, porque protegen la clave privada, las contraseñas, el `csrf` y los ids únicos. Redefinir uno de sus métodos estáticos solo cambia las llamadas desde fuera de la clase. `AppConf` tampoco cambia: su lectura de la configuración es estática y `private`.
+  - Los métodos `private` de una base no se pueden llamar ni redefinir desde la clase del sitio: `leerIni` y `comprobarIni` de `AppConf`, la revalidación de `Page` (`revalidarSesion`, `negarSesion`) y los internos de `GestorIdiomas`, `Cifrado` y `Form`.
+  - Son `protected`, y se pueden llamar y redefinir: `enteroPositivo` y `filaPrincipalEditable` de `Orm`, y `load_template_single`, `existePlantilla`, `niapa_checkboxes` y `avisarCategorias` de `AdminHelper`. Un método con uno de esos nombres en una subclase los redefine, y si es `private` o tiene otra firma da un error fatal.
   - Los errores y las trazas del log pueden nombrar la base (`PageCFW::show()`) en lugar de la clase pública.
-- Antes de copiar, mira si basta con una página nueva que herede de `Page` o de `AdminHelper`, unas claves en `specific/lang/` o una plantilla nueva.
+- Antes de copiar, mira si basta con una página que herede de su base, una nueva que herede de `Page` o de `AdminHelper`, unas claves en `specific/lang/` o una plantilla nueva.
 - Una mejora que sirva a cualquier sitio no se hace en el sitio: se propone para CFW.
 
 ## Páginas
-- Fichero `cfw/specific/pages/<nombre>.php`, con una clase del mismo nombre, en minúsculas, números y `_`, que herede de `Page`, directamente o a través de otra como `AdminHelper`. El constructor llama a `parent::__construct()`.
+- Fichero `cfw/specific/pages/<nombre>.php`, con una clase del mismo nombre, en minúsculas, números y `_`, que herede de `Page`, directamente o a través de otra como `AdminHelper` o una base de página (`usersCFW`…). El constructor llama a `parent::__construct()`.
+- Una página solo se ejecuta si tiene su archivo en `cfw/specific/pages/` o `cfw/general/pages/`: por URL, desde la línea de órdenes (`php index.php <pagina> [método] [arg1] [arg2]`) y con `class.default`. Si no, da 404. Una página abstracta también da 404.
+- El nombre de una página no puede coincidir con el de una clase de CFW ni con el de una base (`pagecfw`, `maincfw`…): PHP no distingue mayúsculas y da un error fatal al pedirla (ver los nombres reservados en [MIGRACION.md](MIGRACION.md)).
 - `init()` atiende la URL sin método. Con método, `/admin/<nombre>/<método>/<arg1>/<arg2>` ejecuta `$page-><método>($arg1, $arg2)`: dos argumentos como máximo; con más, o con `//` en la ruta, da 404. **Los que faltan llegan como `null`**, también si la URL acaba en barra, y como `""` solo con `index.php?...&tres=`, no con el valor por defecto del parámetro: compruébalos con `== ""`, no con `=== null`. `empty()` también es cierto con `"0"`: con `/admin/<nombre>/ver/0`, toma el `0` por un argumento que falta.
 - Es accesible por URL cualquier método público de la página o de una clase intermedia (por ejemplo, `pag`, `ver` o `form` de `AdminHelper`). No lo son los declarados en `AppConf`, `App` o `Page` (ni en sus bases `AppConfCFW`, `AppCFW` y `PageCFW`), los que se llaman como un método de `Page`, los estáticos, los abstractos ni los que empiezan por `__`. Lo que no deba llamarse por URL va como `protected` o `private`.
 - `/admin/<nombre>` es solo una forma de la URL: **no protege nada**. Protege el constructor:
@@ -194,6 +212,7 @@ Reglas y trampas para construir o cambiar un sitio hecho con CFW. Para saber qu�
 - Contar con el valor por defecto de un argumento en un método que se llama por URL: el que falta llega como `null`, también con barra final, y como `""` solo con `index.php?...&tres=`.
 - Buscar desde JS o CSS un campo de `Form` por su `name` como id (`#email`): puede llevar `_2` (ver «Ids de `Form`»).
 - Copiar entera en `cfw/specific/class/` u `orm/` una clase de la lista en lugar de heredar de su base (`FormCFW`, `PageCFW`…): la copia pierde las correcciones de CFW y, en `Form`, los ids únicos y el escapado.
+- Copiar entera en `cfw/specific/pages/` una página de `general` (`main`, `users`…) en lugar de heredar de su base (`mainCFW`, `usersCFW`…): la copia pierde las correcciones de CFW.
 - Escribir un `"` en un `.ini` de idioma, que lo invalida entero, o un `;` en un valor sin comillas.
 - Crear un ORM o una clase en `specific` y no hacer el `require_once`.
 - Definir en `specific/utils/functions.php` una función que ya existe en `general`: error fatal.

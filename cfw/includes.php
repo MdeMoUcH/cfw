@@ -47,6 +47,13 @@ foreach($a_orms as $archivo){
 	my_require_once('orm/'.$archivo);
 }//foreach
 
+//Bases de las páginas de general, siempre de general: una página propia en specific/pages hereda de ellas.
+$a_paginas = array('main','login','cuenta','users','idiomas','errorpage');
+
+foreach($a_paginas as $archivo){
+	require_once($s_path.'general/pages/base/'.$archivo.'CFW.php');
+}//foreach
+
 
 function my_require_once($nombre){
 	$s_path = __DIR__.'/';

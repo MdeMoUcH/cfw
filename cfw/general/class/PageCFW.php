@@ -348,7 +348,13 @@ class PageCFW extends App
 		}//if
 		
 		$this->vars["urlbase"] = $this->config["urlbase"];
-		$this->vars["lang_actual"] = GestorIdiomas::actual();
+		//Con un actual() redefinido, <html lang> solo lleva un código como los de disponibles().
+		$s_lang = GestorIdiomas::actual();
+		if(!is_string($s_lang) || !preg_match('/^[a-z]{2}$/D', $s_lang))
+		{
+			$s_lang = GestorIdiomas::porDefecto();
+		}//if
+		$this->vars["lang_actual"] = (is_string($s_lang) && preg_match('/^[a-z]{2}$/D', $s_lang)) ? $s_lang : "es";
 		
 		$tpl = new Template("cascara");
 		

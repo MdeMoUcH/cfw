@@ -26,8 +26,8 @@ Una petición se traduce en clase, método y hasta dos argumentos:
 /admin/clase/metodo/arg1/arg2  ->  index.php?uno=clase&dos=metodo&tres=arg1&cuatro=arg2
 ```
 
-1. `index.php` busca `cfw/specific/pages/<clase>.php` y, si no existe, `cfw/general/pages/<clase>.php`. Si no se indica clase, usa `class.default` de la configuración.
-2. El fichero debe definir una clase con el mismo nombre, en minúsculas, números y `_`, que herede de `Page`.
+1. `index.php` busca `cfw/specific/pages/<clase>.php` y, si no existe, `cfw/general/pages/<clase>.php`; si no hay ninguno, da 404. Si no se indica clase, usa `class.default` de la configuración. El archivo se exige también para `class.default` y desde la línea de órdenes (`php index.php <clase> [método] [arg1] [arg2]`).
+2. El fichero debe definir una clase con el mismo nombre, en minúsculas, números y `_`, que herede de `Page` y no sea abstracta.
 3. Sin método se ejecuta `init()`. Con método, se ejecuta `$page->metodo($arg1, $arg2)`.
 4. Si algo falla, responde 404 con `ErrorCFW`. Los detalles solo se muestran con `desarrollo = true`.
 
@@ -39,14 +39,14 @@ El `.htaccess` raíz solo define las rutas `/admin/...`, `/login` y `/login/logo
 
 | Carpeta | Efecto |
 |---|---|
-| `pages/` | Sustituye a la página de `general` con el mismo nombre, o añade una nueva. |
+| `pages/` | Sustituye a la página de `general` con el mismo nombre, o añade una nueva. La que sustituye a una de `general` hereda de su base `<página>CFW` (`mainCFW`, `usersCFW`…), que no se sustituye, o se copia entera. Una página nueva hereda de `Page` o de `AdminHelper`. |
 | `class/` | Sustituye a la clase de `general` con el mismo nombre. La clase propia hereda de su base `…CFW` (`PageCFW`, `FormCFW`…), que no se sustituye, o se copia entera. |
 | `orm/` | Sustituye a `Usuarios` o `DinamicOrm`. El ORM propio hereda de `UsuariosCFW` o `DinamicOrmCFW`, que no se sustituyen, o se copia entero. |
 | `templates/` | Sustituye a la plantilla con la misma ruta. |
 | `lang/<código>/` | Se fusiona clave a clave con los textos de `general`, con prioridad sobre ellos dentro del mismo idioma. |
 | `utils/functions.php` | Se carga además del de `general`. |
 
-En `pages/` y `templates/` la sustitución es del fichero entero; en `class/` y `orm/`, la clase propia redefine solo lo que cambia si hereda de su base. No hay carga automática de clases nuevas: ver «Dónde va cada cosa» en [DESARROLLO.md](DESARROLLO.md).
+En `templates/` la sustitución es del fichero entero; en `pages/`, `class/` y `orm/`, la clase propia redefine solo lo que cambia si hereda de su base. No hay carga automática de clases nuevas: ver «Dónde va cada cosa» en [DESARROLLO.md](DESARROLLO.md).
 
 ## Qué queda fuera de `specific`
 Cada proyecto también adapta estos ficheros, que no están en `specific`: `config/config.ini`, el `.htaccess` raíz, `db.sql`, `css/`, `js/` e `img/`. Al actualizar CFW en un proyecto hay que revisarlos a mano (ver [MIGRACION.md](MIGRACION.md)). `data/`, en la raíz, guarda lo que escribe la aplicación; su contenido no se versiona, salvo su `.htaccess`. La configuración del servidor, `config/config-servidor.ini`, la escribe la persona, va en `config/`, donde Apache solo puede leer, y tampoco se versiona.

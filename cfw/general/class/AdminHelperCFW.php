@@ -499,13 +499,13 @@ class AdminHelperCFW extends Page implements PaginaAdmin{
 		return $this->existePlantilla($this->template) ? new Template($this->template) : new Template("elements");
 	}
 	
-	private function load_template_single(){
+	protected function load_template_single(){
 		$s_nombre = $this->template_single != "" ? $this->template_single : $this->slug;
 		return $this->existePlantilla($s_nombre) ? new Template($s_nombre) : new Template("element");
 	}
 	
 	//Con o sin .tpl y con la misma validación que Template, para no acabar en su 404.
-	private function existePlantilla($s_nombre){
+	protected function existePlantilla($s_nombre){
 		$s_nombre = is_scalar($s_nombre) ? (string)$s_nombre : "";
 		$pos = strpos($s_nombre,".tpl");
 		if($pos != 0){
@@ -518,7 +518,7 @@ class AdminHelperCFW extends Page implements PaginaAdmin{
 			file_exists($this->config["pathbase"]."cfw/general/templates/".$s_nombre.".tpl");
 	}
 	
-	private function niapa_checkboxes($txt){
+	protected function niapa_checkboxes($txt){
 		if(isset($_POST[$txt])){
 			$_POST[$txt] = 1;
 		}else{
@@ -883,7 +883,7 @@ class AdminHelperCFW extends Page implements PaginaAdmin{
 	}
 	
 	//Solo con un false explícito: un guardarCategorias redefinido que no devuelva nada no avisa.
-	private function avisarCategorias($b_ok,$tplmsg){
+	protected function avisarCategorias($b_ok,$tplmsg){
 		if($b_ok !== false){
 			return;
 		}

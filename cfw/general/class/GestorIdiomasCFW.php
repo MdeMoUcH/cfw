@@ -141,7 +141,7 @@ class GestorIdiomasCFW
 		{
 			$app = new AppConf();
 			$s_default = @$app->config["lang_default"];
-			$a_disponibles = self::disponibles();
+			$a_disponibles = static::disponibles();
 			self::$s_default = (is_string($s_default) && isset($a_disponibles[$s_default])) ? $s_default : "es";
 		}//if
 
@@ -235,8 +235,8 @@ class GestorIdiomasCFW
 	static function seleccionados()
 	{
 		$a_opciones = self::opciones();
-		$a_disponibles = self::disponibles();
-		$a_seleccionados = array(self::porDefecto());
+		$a_disponibles = static::disponibles();
+		$a_seleccionados = array(static::porDefecto());
 
 		foreach($a_opciones["idiomas"] as $s_codigo)
 		{
@@ -252,41 +252,50 @@ class GestorIdiomasCFW
 
 	static function activos()
 	{
-		return self::multiidiomaActivo() ? self::seleccionados() : array(self::porDefecto());
+		return static::multiidiomaActivo() ? static::seleccionados() : array(static::porDefecto());
 	}//fun activos
 
 
 	static function hayVarios()
 	{
-		return count(self::activos()) >= 2;
+		return count(static::activos()) >= 2;
 	}//fun hayVarios
 
 
 	//Se calcula en cada llamada: el login y el logout cambian el idioma en mitad de la petición.
 	static function actual()
 	{
-		$s_default = self::porDefecto();
+		$s_default = static::porDefecto();
 
-		if(!isset($_SESSION) || !self::multiidiomaActivo())
+		if(!isset($_SESSION) || !static::multiidiomaActivo())
 		{
-			return $s_default;
+			$s_lang = $s_default;
 		}//if
-
-		if(isset($_SESSION["logueado"]) && $_SESSION["logueado"] != "")
+		elseif(isset($_SESSION["logueado"]) && $_SESSION["logueado"] != "")
 		{
 			$s_lang = isset($_SESSION["lang"]) ? $_SESSION["lang"] : "";
-			return (is_string($s_lang) && in_array($s_lang, self::activos(), true)) ? $s_lang : $s_default;
+			$s_lang = (is_string($s_lang) && in_array($s_lang, static::activos(), true)) ? $s_lang : $s_default;
+		}//elseif
+		else
+		{
+			$s_lang = static::detectarNavegador();
+		}//else
+
+		//Un método redefinido no lleva a <html lang> nada que no sea un código como los de disponibles().
+		if(is_string($s_lang) && preg_match('/^[a-z]{2}$/D', $s_lang))
+		{
+			return $s_lang;
 		}//if
 
-		return self::detectarNavegador();
+		return (is_string($s_default) && preg_match('/^[a-z]{2}$/D', $s_default)) ? $s_default : "es";
 	}//fun actual
 
 
 	//Único punto de lectura de Accept-Language. Devuelve siempre un elemento de la lista de activos.
 	static function detectarNavegador()
 	{
-		$a_activos = self::activos();
-		$s_default = self::porDefecto();
+		$a_activos = static::activos();
+		$s_default = static::porDefecto();
 
 		if(count($a_activos) < 2)
 		{
@@ -364,18 +373,22 @@ class GestorIdiomasCFW
 			return array();
 		}//if
 
-		$s_lang = self::actual();
-		$s_cache = $s_lang."|".$s_nombre;
+		$s_lang = static::actual();
+		$s_cache = (is_string($s_lang) ? $s_lang : "")."|".$s_nombre;
 		if(isset(self::$a_textos[$s_cache]))
 		{
 			return self::$a_textos[$s_cache];
 		}//if
 
-		$a_idiomas = array(self::porDefecto());
-		if($s_lang !== $a_idiomas[0])
+		//Un porDefecto() o actual() redefinido no puede sacar la ruta de lang/: solo códigos como los de disponibles().
+		$a_idiomas = array();
+		foreach(array(static::porDefecto(), $s_lang) as $s_codigo)
 		{
-			$a_idiomas[] = $s_lang;
-		}//if
+			if(is_string($s_codigo) && preg_match('/^[a-z]{2}$/D', $s_codigo) && !in_array($s_codigo, $a_idiomas, true))
+			{
+				$a_idiomas[] = $s_codigo;
+			}//if
+		}//foreach
 
 		$a_textos = array();
 		foreach($a_idiomas as $s_codigo)
@@ -413,11 +426,19 @@ class GestorIdiomasCFW
 	//Reemplazo atómico con temporal y rename: Apache solo necesita permiso sobre la carpeta data/ de la raíz.
 	static function guardar($b_activo, $a_codigos)
 	{
-		$a_disponibles = self::disponibles();
-		$a_idiomas = array(self::porDefecto());
+		$a_disponibles = static::disponibles();
+		$s_default = static::porDefecto();
+		//Con el filtro, un disponibles() o porDefecto() redefinido no mete en el archivo nada que no sea un código.
+		if(!is_string($s_default) || !preg_match('/^[a-z]{2}$/D', $s_default))
+		{
+			error_log("CFW: GestorIdiomas::porDefecto() no devuelve un código de idioma válido; no se guardan las opciones");
+			return false;
+		}//if
+
+		$a_idiomas = array($s_default);
 		foreach((array)$a_codigos as $s_codigo)
 		{
-			if(is_string($s_codigo) && isset($a_disponibles[$s_codigo]) && !in_array($s_codigo, $a_idiomas, true))
+			if(is_string($s_codigo) && preg_match('/^[a-z]{2}$/D', $s_codigo) && isset($a_disponibles[$s_codigo]) && !in_array($s_codigo, $a_idiomas, true))
 			{
 				$a_idiomas[] = $s_codigo;
 			}//if

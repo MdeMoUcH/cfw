@@ -29,8 +29,8 @@ class BbddCFW extends App
         
         $this->conexion = mysqli_init();
         if(!$this->conexion
-            || !mysqli_options($this->conexion, MYSQLI_OPT_CONNECT_TIMEOUT, self::TIEMPO_CONEXION)
-            || !mysqli_options($this->conexion, MYSQLI_OPT_READ_TIMEOUT, self::TIEMPO_LECTURA)
+            || !mysqli_options($this->conexion, MYSQLI_OPT_CONNECT_TIMEOUT, static::TIEMPO_CONEXION)
+            || !mysqli_options($this->conexion, MYSQLI_OPT_READ_TIMEOUT, static::TIEMPO_LECTURA)
             || !@mysqli_real_connect($this->conexion, $this->config["db.host"], $this->config["db.user"], $this->config["db.pass"], $this->config["db.name"]))
         {
             error_log("CFW: no se pudo conectar a la base de datos (error ".mysqli_connect_errno().")");

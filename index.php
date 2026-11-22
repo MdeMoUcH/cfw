@@ -131,8 +131,16 @@ if(count($errores) < 1)
 	{
 		require_once($app->config["pathbase"]."cfw/general/pages/".$class.".php");
 	}//elseif
+	else
+	{
+		//También por CLI y con class.default: sin archivo de página no se despacha ninguna clase (ErrorCFW, AdminHelper, las bases...).
+		$errores[] = array("text_archivo_no_encontrado", array("x" => $class));
+	}//else
+}//if
 
-	if(class_exists($class) && is_subclass_of($class,"Page"))
+if(count($errores) < 1)
+{
+	if(class_exists($class) && is_subclass_of($class,"Page") && !(new ReflectionClass($class))->isAbstract())
 	{
 		if($arg1 != "" && method_exists($class,$arg1))
 		{
