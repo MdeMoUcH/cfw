@@ -26,13 +26,13 @@ if(file_exists($s_path.'specific/utils/mpdf/mpdf.php')){
 }//if*/
 
 $a_clases = array('AppConf','App','Msession','Cifrado','GestorIdiomas','Bbdd','Template','Page',
-				'PaginaAdmin','Error','Orm','Form','AdminHelper');
+				'PaginaAdmin','PaginaUsuario','Error','Orm','Form','AdminHelper');
 
 $a_orms = array('Usuarios','DinamicOrm');
 //die(getcwd());
 
 //Base de cada clase, siempre la de general; una clase propia en specific hereda de ella.
-$a_bases = array('Error' => 'ErrorBaseCFW', 'PaginaAdmin' => '');
+$a_bases = array('Error' => 'ErrorBaseCFW', 'PaginaAdmin' => '', 'PaginaUsuario' => '');
 
 foreach($a_clases as $archivo){
 	$s_base = isset($a_bases[$archivo]) ? $a_bases[$archivo] : $archivo.'CFW';

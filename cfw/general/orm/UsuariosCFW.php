@@ -48,7 +48,7 @@ class UsuariosCFW extends Orm
 									"title" => t("text_campo_idioma"),
 									"name" => "fk_idioma",
 									"type" => "radio",
-									"value" => GestorIdiomas::porDefecto(),
+									"value" => $this->idiomaPorDefecto(),
 									"opciones" => array() ),
 								"activo" => array(
 									"title" => t("text_campo_estado"),
@@ -67,7 +67,7 @@ class UsuariosCFW extends Orm
 		if(GestorIdiomas::hayVarios()){
 			$a_disponibles = GestorIdiomas::disponibles();
 			foreach(GestorIdiomas::activos() as $s_codigo){
-				$this->campos_form["idioma"]["opciones"][$a_disponibles[$s_codigo]] = $s_codigo;
+				$this->campos_form["idioma"]["opciones"][isset($a_disponibles[$s_codigo]) ? $a_disponibles[$s_codigo] : $s_codigo] = $s_codigo;
 			}
 		}else{
 			unset($this->campos_form["idioma"]);
@@ -143,7 +143,7 @@ class UsuariosCFW extends Orm
 		}else{
 			$a_array = $this->normalizarIdioma($a_array);
 			if(!isset($a_array["fk_idioma"])){
-				$a_array["fk_idioma"] = GestorIdiomas::porDefecto();
+				$a_array["fk_idioma"] = $this->idiomaPorDefecto();
 			}
 			return $this->emailRepetido(parent::insert($a_array));
 		}
@@ -181,6 +181,13 @@ class UsuariosCFW extends Orm
 			$this->errores[] = t('text_error_usuario_mail');
 		}
 		return $b_ok;
+	}
+	
+	
+	//Un porDefecto() redefinido no válido no se pinta ni se guarda.
+	private function idiomaPorDefecto(){
+		$s_default = GestorIdiomas::porDefecto();
+		return (is_string($s_default) && preg_match('/^[a-z]{2}$/D', $s_default)) ? $s_default : "es";
 	}
 	
 	

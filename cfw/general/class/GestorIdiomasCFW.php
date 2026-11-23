@@ -231,12 +231,13 @@ class GestorIdiomasCFW
 	}//fun multiidiomaActivo
 
 
-	//Los marcados en la configuración, aunque el multiidioma esté desactivado. El de por defecto siempre va.
+	//Los marcados en la configuración, aunque el multiidioma esté desactivado. El de por defecto siempre va, si es un código válido.
 	static function seleccionados()
 	{
 		$a_opciones = self::opciones();
 		$a_disponibles = static::disponibles();
-		$a_seleccionados = array(static::porDefecto());
+		$s_default = static::porDefecto();
+		$a_seleccionados = (is_string($s_default) && preg_match('/^[a-z]{2}$/D', $s_default)) ? array($s_default) : array();
 
 		foreach($a_opciones["idiomas"] as $s_codigo)
 		{
@@ -250,9 +251,24 @@ class GestorIdiomasCFW
 	}//fun seleccionados
 
 
+	//Sin códigos no válidos ni ajenos a disponibles(), salvo porDefecto(): la base da «es» aunque no esté.
 	static function activos()
 	{
-		return static::multiidiomaActivo() ? static::seleccionados() : array(static::porDefecto());
+		$s_default = static::porDefecto();
+		$a_lista = static::multiidiomaActivo() ? static::seleccionados() : array($s_default);
+		$a_disponibles = static::disponibles();
+		$a_activos = array();
+
+		foreach((array)$a_lista as $s_codigo)
+		{
+			if(is_string($s_codigo) && preg_match('/^[a-z]{2}$/D', $s_codigo)
+				&& (isset($a_disponibles[$s_codigo]) || $s_codigo === $s_default) && !in_array($s_codigo, $a_activos, true))
+			{
+				$a_activos[] = $s_codigo;
+			}//if
+		}//foreach
+
+		return count($a_activos) >= 1 ? $a_activos : array("es");
 	}//fun activos
 
 
@@ -389,6 +405,11 @@ class GestorIdiomasCFW
 				$a_idiomas[] = $s_codigo;
 			}//if
 		}//foreach
+		//Si ninguno está en disponibles() (por ejemplo, un porDefecto() redefinido a "zz"), los de «es» van debajo.
+		if(!in_array("es", $a_idiomas, true) && count(array_intersect($a_idiomas, array_keys(static::disponibles()))) < 1)
+		{
+			array_unshift($a_idiomas, "es");
+		}//if
 
 		$a_textos = array();
 		foreach($a_idiomas as $s_codigo)

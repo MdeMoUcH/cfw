@@ -17,6 +17,8 @@ class PageCFW extends App
 	protected $s_fallo_cifrado = "";
 	//Solo la pone revalidarSesion cuando la BD confirma que es administrador; index.php la exige en AdminHelper y PaginaAdmin.
 	private $b_admin_revalidado = false;
+	//Solo la pone revalidarSesion cuando la BD confirma el usuario; index.php la exige en PaginaUsuario.
+	private $b_usuario_revalidado = false;
 	
 	function __construct()
 	{
@@ -98,6 +100,7 @@ class PageCFW extends App
 		{
 			$this->b_admin_revalidado = true;
 		}//if
+		$this->b_usuario_revalidado = true;
 	}//fun revalidarSesion
 	
 	
@@ -115,11 +118,17 @@ class PageCFW extends App
 	}//fun negarSesion
 	
 	
-	//final: una subclase no puede fingir que ha comprobado el administrador.
+	//final: una subclase no puede fingir que ha comprobado el administrador ni el usuario.
 	final public function adminRevalidado()
 	{
 		return $this->b_admin_revalidado === true;
 	}//fun adminRevalidado
+	
+	
+	final public function usuarioRevalidado()
+	{
+		return $this->b_usuario_revalidado === true;
+	}//fun usuarioRevalidado
 	
 	
 	//Guarda la clave, no el texto: tras cambiar de idioma debe pintarse en el nuevo.

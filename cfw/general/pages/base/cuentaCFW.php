@@ -11,7 +11,7 @@
 
 
 
-abstract class cuentaCFW extends Page{
+abstract class cuentaCFW extends Page implements PaginaUsuario{
 	
 	function __construct(){
 		parent::__construct();
@@ -148,7 +148,7 @@ abstract class cuentaCFW extends Page{
 		$form = new Form();
 		$s_opciones = "";
 		foreach(GestorIdiomas::activos() as $s_codigo){
-			$s_opciones .= $form->getInput("fk_idioma","radio",$s_codigo,"","",$s_codigo === $s_actual,"&nbsp;".escapar($a_disponibles[$s_codigo]),"fk_idioma_".$s_codigo)."<br/>";
+			$s_opciones .= $form->getInput("fk_idioma","radio",$s_codigo,"","",$s_codigo === $s_actual,"&nbsp;".escapar(isset($a_disponibles[$s_codigo]) ? $a_disponibles[$s_codigo] : $s_codigo),"fk_idioma_".$s_codigo)."<br/>";
 		}
 		
 		$tpl = new Template("web/cuenta_idioma");

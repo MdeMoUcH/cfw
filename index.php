@@ -29,7 +29,7 @@ else
 }//else
 
 
-//comprobar_csrf y comprobar_admin no usan métodos de $page para responder: la subclase puede haberlos redefinido.
+//comprobar_csrf, comprobar_admin y comprobar_usuario no usan métodos de $page para responder: la subclase puede haberlos redefinido.
 function comprobar_csrf()
 {
 	if(@$_SERVER["REQUEST_METHOD"] === "POST")
@@ -68,6 +68,33 @@ function comprobar_admin($page)
 		die();
 	}//if
 }//fun comprobar_admin
+
+
+function comprobar_usuario($page)
+{
+	if($page instanceof PaginaUsuario && !$page->usuarioRevalidado())
+	{
+		$error = new ErrorCFW();
+		$conf = new AppConf();
+		$b_admin = !empty($_SESSION["logueado"]) && !empty($_SESSION["admin"]);
+		if($conf->config["desarrollo"] || $b_admin)
+		{
+			error_log("CFW: ".get_class($page)." no ha comprobado el usuario (exigirUsuario); su constructor debe llamar a parent::__construct() o a exigirUsuario()");
+		}//if
+		http_response_code(403);
+		$error->init(array(t("text_acceso_denegado")));
+		die();
+	}//if
+}//fun comprobar_usuario
+
+
+//Solo se despacha la clase declarada en el propio archivo de página: un pages/errorcfw.php vacío no despacha ErrorCFW.
+function clase_en_archivo($class, $s_archivo)
+{
+	$s_declarada = (new ReflectionClass($class))->getFileName();
+	$s_real = realpath($s_archivo);
+	return is_string($s_declarada) && $s_real !== false && realpath($s_declarada) === $s_real;
+}//fun clase_en_archivo
 
 
 //Clave y parámetros: el texto se traduce cuando ya hay sesión.
@@ -121,15 +148,18 @@ if(count($errores) < 1 && $arg1 != "" && !preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/
 }//if
 
 
+$s_archivo_pagina = "";
 if(count($errores) < 1)
 {
 	if(file_exists($app->config["pathbase"]."cfw/specific/pages/".$class.".php"))
 	{
-		require_once($app->config["pathbase"]."cfw/specific/pages/".$class.".php");
+		$s_archivo_pagina = $app->config["pathbase"]."cfw/specific/pages/".$class.".php";
+		require_once($s_archivo_pagina);
 	}//if
 	elseif(file_exists($app->config["pathbase"]."cfw/general/pages/".$class.".php"))
 	{
-		require_once($app->config["pathbase"]."cfw/general/pages/".$class.".php");
+		$s_archivo_pagina = $app->config["pathbase"]."cfw/general/pages/".$class.".php";
+		require_once($s_archivo_pagina);
 	}//elseif
 	else
 	{
@@ -142,12 +172,17 @@ if(count($errores) < 1)
 {
 	if(class_exists($class) && is_subclass_of($class,"Page") && !(new ReflectionClass($class))->isAbstract())
 	{
-		if($arg1 != "" && method_exists($class,$arg1))
+		if(!clase_en_archivo($class, $s_archivo_pagina))
+		{
+			$errores[] = array("text_clase_fuera_de_pagina", array("clase" => $class));
+		}//if
+		elseif($arg1 != "" && method_exists($class,$arg1))
 		{
 			if(metodo_despachable($class, $arg1))
 			{
 				$page = new $class();
 				comprobar_admin($page);
+				comprobar_usuario($page);
 				comprobar_csrf();
 				$page->$arg1($arg2,$arg3);
 				die();
@@ -175,6 +210,7 @@ if(count($errores) < 1)
 		{
 			$page = new $class();
 			comprobar_admin($page);
+			comprobar_usuario($page);
 			comprobar_csrf();
 			//$page->init($arg1,$arg2);
 			$page->init();
